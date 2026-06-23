@@ -1,0 +1,98 @@
+import faiss
+import numpy as np
+import pandas as pd
+from datetime import datetime, timedelta
+
+
+class TemporalRetriever:
+
+    def __init__(self, dataframe, index_path):
+        """
+        dataframe columns:
+        - text
+        - date
+        - embedding
+        """
+
+        self.df = dataframe
+
+        # load FAISS index
+        self.index = faiss.read_index(index_path)
+
+
+    def filter_by_time(self, query_date, window_days):
+        """
+        Keeps only documents inside the temporal window
+        """
+
+        query_date = datetime.strptime(query_date, "%Y-%m-%d")
+
+        start_date = query_date - timedelta(days=window_days)
+
+
+        filtered = self.df[
+            (pd.to_datetime(self.df["date"]) >= start_date)
+            &
+            (pd.to_datetime(self.df["date"]) <= query_date)
+        ]
+
+
+        return filtered
+
+
+
+    def retrieve(self, query_embedding, query_date, window_days, k=5):
+        """
+        Retrieves top-k documents inside temporal window
+        """
+
+
+        # Step 1: temporal filtering
+        filtered_docs = self.filter_by_time(
+            query_date,
+            window_days
+        )
+
+
+        if len(filtered_docs) == 0:
+            return []
+
+
+        # Step 2: extract embeddings
+        embeddings = np.vstack(
+            filtered_docs["embedding"].values
+        ).astype("float32")
+
+
+        # Step 3: temporary FAISS index
+        temp_index = faiss.IndexFlatL2(
+            embeddings.shape[1]
+        )
+
+
+        temp_index.add(embeddings)
+
+
+
+        # Step 4: similarity search
+        distances, indices = temp_index.search(
+            np.array([query_embedding]).astype("float32"),
+            min(k, len(filtered_docs))
+        )
+
+
+        results = []
+
+
+        for idx in indices[0]:
+
+            row = filtered_docs.iloc[idx]
+
+            results.append({
+                "date": row["date"],
+                "text": row["text"],
+                "distance": float(distances[0][len(results)])
+            })
+
+
+        return results
