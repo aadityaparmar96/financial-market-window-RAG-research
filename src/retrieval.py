@@ -66,7 +66,7 @@ class TemporalRetriever:
 
         # Step 3: temporary FAISS index
         temp_index = faiss.IndexFlatL2(
-            embeddings.shape[1]
+            embeddings.shape[2]
         )
 
 
