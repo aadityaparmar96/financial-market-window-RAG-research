@@ -26,6 +26,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Optional
+import json
 
 import pandas as pd
 
@@ -443,6 +444,22 @@ def filter_by_window(
         doc for doc in documents
         if start_date <= doc["metadata"]["date"] <= end_date
     ]
+
+
+#data saver:
+
+def save_document(documents : list[dict], output_path : Path)-> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(
+            documents,
+            f,
+            indent=4,
+            ensure_ascii=False
+        )
+    print(f"Saved {len(documents)} documents to {output_path}")
+    
 
 
 # ---------------------------------------------------------------------------
