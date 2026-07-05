@@ -15,3 +15,15 @@ for window, chunks in all_chunks.items():
         name=f"finance_{window}",
         metadata={"window": window}
     )
+
+    texts = [c["text"] for c in chunks]
+    ids = [f"{window}_chunk_{i}" for i in range(len(chunks))]
+    metadatas = [{"date": c["date"], "window": c["window"]} for c in chunks]
+    
+    batch_size = 100
+    for i in range(0, len(texts), batch_size):
+        collection.add(
+            documents=texts[i:i+batch_size],
+            ids=ids[i:i+batch_size],
+            metadatas=metadatas[i:i+batch_size]
+        )
