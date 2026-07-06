@@ -1,8 +1,18 @@
 import chromadb
 from sentence_transformers import SentenceTransformer
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
-client = chromadb.PersistentClient(path=f"{BASE}/chromadb")
-embedder = SentenceTransformer("all=MiniLM-L6-v2")
+
+CUTOFF = date(2015, 12, 31)
+WINDOWS = {
+    "5yr" : CUTOFF - relativedelta(years = 5),
+    "10yr" : CUTOFF - relativedelta(years = 10),
+    "20yr" : CUTOFF - relativedelta(years= 20),
+    "50yr" : CUTOFF - relativedelta(years=50)
+}
+
+
 
 for window, chunks in all_chunks.items():
     
