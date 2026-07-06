@@ -2,7 +2,9 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from data_process import load_all_documents, filter_by_window
 
+all_documents = load_all_documents
 
 CUTOFF = date(2015, 12, 31)
 WINDOWS = {
@@ -11,6 +13,32 @@ WINDOWS = {
     "20yr" : CUTOFF - relativedelta(years= 20),
     "50yr" : CUTOFF - relativedelta(years=50)
 }
+
+
+client = chromadb.PersistentClient(path="./chromadb")
+embedder = SentenceTransformer("all-MiniLM-L6-v2")
+
+for window_name, start_date in WINDOWS.items():
+    windows_docs = filter_by_window(
+        all_documents,
+        start_date=start_date.isoformat,
+        end_date = CUTOFF.isoformat
+    )
+
+    print(f"{window_name} : {len(windows_docs)} documents "
+          f"({start_date} to {CUTOFF}) ")
+    
+    try:
+        client.delete_collection(f"finance_{window_name}")
+    except Exception:
+        pass
+
+    collection = client.create_collection(
+        name = f"finance_{window_name}",
+        metadata={"window" : window_name}
+    )
+
+
 
 
 
