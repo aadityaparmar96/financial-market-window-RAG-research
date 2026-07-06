@@ -19,13 +19,13 @@ client = chromadb.PersistentClient(path="./chromadb")
 embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
 for window_name, start_date in WINDOWS.items():
-    windows_docs = filter_by_window(
+    window_docs = filter_by_window(
         all_documents,
         start_date=start_date.isoformat,
         end_date = CUTOFF.isoformat
     )
 
-    print(f"{window_name} : {len(windows_docs)} documents "
+    print(f"{window_name} : {len(window_docs)} documents "
           f"({start_date} to {CUTOFF}) ")
     
     try:
@@ -37,6 +37,10 @@ for window_name, start_date in WINDOWS.items():
         name = f"finance_{window_name}",
         metadata={"window" : window_name}
     )
+
+    texts = [d["text"] for d in window_docs]
+    ids = [f"{window_name}_chunk_{i}" for i in range(len(window_docs))]
+    metadatas = [d["metadata"] for d in window_docs]
 
 
 
@@ -54,9 +58,7 @@ for window, chunks in all_chunks.items():
         metadata={"window": window}
     )
 
-    texts = [c["text"] for c in chunks]
-    ids = [f"{window}_chunk_{i}" for i in range(len(chunks))]
-    metadatas = [{"date": c["date"], "window": c["window"]} for c in chunks]
+    
     
     batch_size = 100
     for i in range(0, len(texts), batch_size):
