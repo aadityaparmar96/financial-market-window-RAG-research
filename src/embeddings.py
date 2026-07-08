@@ -42,31 +42,14 @@ for window_name, start_date in WINDOWS.items():
     ids = [f"{window_name}_chunk_{i}" for i in range(len(window_docs))]
     metadatas = [d["metadata"] for d in window_docs]
 
-
-
-
-
-for window, chunks in all_chunks.items():
-    
-    try:
-        client.delete_collection(f"finance_{window}")
-    except:
-        pass
-    
-    collection = client.create_collection(
-        name=f"finance_{window}",
-        metadata={"window": window}
-    )
-
-    
-    
     batch_size = 100
-    for i in range(0, len(texts), batch_size):
+    for i in range (0, len(texts), batch_size):
         collection.add(
             documents=texts[i:i+batch_size],
-            ids=ids[i:i+batch_size],
+            ids=ids[i: i+ batch_size],
             metadatas=metadatas[i:i+batch_size]
         )
+
     
 test_query = "Federal Reserve interest rate cuts following economic shock"
 

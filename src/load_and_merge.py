@@ -45,7 +45,7 @@ for df in dfs[1:]:
     master = master.merge(
         df,
         on="DATE",
-        how="outer"
+        how="inner"
     )
 
 master = master.sort_values("DATE")
