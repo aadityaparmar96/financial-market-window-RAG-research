@@ -2,11 +2,45 @@ import faiss
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+from typing import TypedDict
+import chromadb
+from sentence_transformers import SentenceTransformer
+
+class RetrievedChunk(TypedDict):
+    text: str
+    date : str
+    source : str
+    dataset_type = str
+    distance = float
+
+VALID_WINDOWS = ["5yr", "10yr", "15yr", "20yr"]
+
+
+class WindowRetreiver:
+    def __init__(self, chromadb_path : str = "./chromadb"):
+        self.client = chromadb.PersistentClient(path = chromadb_path)
+        self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
+        logger.info("WindowRetreiver initialized (path=%s)", chromadb_path)
+        pass
+
+
+
+
+
+    def retreive(
+            self,
+            question : str,
+            window : str,
+            n_results: int = 5;
+    ) -> list[RetrievedChunk]:
+        
+
+
 
 
 class TemporalRetriever:
 
-    def __init__(self, dataframe, index_path):
+    def __ini__(self, dataframe, index_path):
         """
         dataframe columns:
         - text
