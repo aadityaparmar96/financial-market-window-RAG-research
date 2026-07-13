@@ -39,6 +39,22 @@ class WindowRetreiver:
             n_results: int = 5;
     ) -> list[RetrievedChunk]:
         
+        if window not in VALID_WINDOWS:
+            raise ValueError(
+                f"Invalid window '{window}'. Must be one of {VALID_WINDOWS}."
+            )
+
+        collection_name = f"finance_{window}"
+
+        try:
+            collection = self.client.get_collection(collection_name)
+        except Exception as exc:
+            logger.error(
+                "Collection '%s' not found. Did embeddings.py run "
+                "successfully? (%s)", collection_name, exc
+            )
+            return []
+        
 
 
 
