@@ -55,6 +55,15 @@ class WindowRetreiver:
             )
             return []
         
+        if collection.count() == 0:
+            logger.warning("Collection '%s' is empty.", collection_name)
+            return []
+
+        results = collection.query(
+            query_texts=[question],
+            n_results=min(n_results, collection.count()),
+        )
+        
 
 
 
