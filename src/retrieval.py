@@ -63,6 +63,22 @@ class WindowRetreiver:
             query_texts=[question],
             n_results=min(n_results, collection.count()),
         )
+
+        chunks: list[RetrievedChunk] = []
+        documents = results["documents"][0]
+        metadatas = results["metadatas"][0]
+        distances = results["distances"][0]
+
+        for doc, meta, dist in zip(documents, metadatas, distances):
+            chunks.append({
+                "text": doc,
+                "date": meta.get("date", "unknown"),
+                "source": meta.get("source", "unknown"),
+                "dataset_type": meta.get("dataset_type", "unknown"),
+                "distance": float(dist),
+            })
+        return chunks
+    
         
 
 
