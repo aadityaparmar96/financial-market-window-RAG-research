@@ -95,18 +95,7 @@ class WindowRetreiver:
 
 class TemporalRetriever:
 
-    def __ini__(self, dataframe, index_path):
-        """
-        dataframe columns:
-        - text
-        - date
-        - embedding
-        """
-
-        self.df = dataframe
-
-        # load FAISS index
-        self.index = faiss.read_index(index_path)
+ 
 
 
     def filter_by_time(self, query_date, window_days):
