@@ -88,6 +88,12 @@ class WindowRetreiver:
             window : self.retreive(question, window, n_results)
             for window in VALID_WINDOWS
         }
+    def format_context(self, chunks: list[RetrievedChunk]) -> str:
+        if not chunks:
+            return "(No relevant context was retrieved for this window.)"
+        return "\n\n".join(
+            f"[{c['date']}]: {c['text']}" for c in chunks
+        )
         
 
 
