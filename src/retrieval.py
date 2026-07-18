@@ -104,26 +104,6 @@ class TemporalRetriever:
  
 
 
-    def filter_by_time(self, query_date, window_days):
-        """
-        Keeps only documents inside the temporal window
-        """
-
-        query_date = datetime.strptime(query_date, "%Y-%m-%d")
-
-        start_date = query_date - timedelta(days=window_days)
-
-
-        filtered = self.df[
-            (pd.to_datetime(self.df["date"]) >= start_date)
-            &
-            (pd.to_datetime(self.df["date"]) <= query_date)
-        ]
-
-
-        return filtered
-
-
 
     def retrieve(self, query_embedding, query_date, window_days, k=5):
         """
