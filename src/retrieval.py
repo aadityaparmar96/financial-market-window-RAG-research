@@ -148,15 +148,4 @@ class TemporalRetriever:
         results = []
 
 
-        for idx in indices[0]:
-
-            row = filtered_docs.iloc[idx]
-
-            results.append({
-                "date": row["date"],
-                "text": row["text"],
-                "distance": float(distances[0][len(results)])
-            })
-
-
-        return results
+  
