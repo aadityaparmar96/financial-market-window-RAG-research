@@ -105,47 +105,4 @@ class TemporalRetriever:
 
 
 
-    def retrieve(self, query_embedding, query_date, window_days, k=5):
-        """
-        Retrieves top-k documents inside temporal window
-        """
-
-
-        # Step 1: temporal filtering
-        filtered_docs = self.filter_by_time(
-            query_date,
-            window_days
-        )
-
-
-        if len(filtered_docs) == 0:
-            return []
-
-
-        # Step 2: extract embeddings
-        embeddings = np.vstack(
-            filtered_docs["embedding"].values
-        ).astype("float32")
-
-
-        # Step 3: temporary FAISS index
-        temp_index = faiss.IndexFlatL2(
-            embeddings.shape[1]
-        )
-
-
-        temp_index.add(embeddings)
-
-
-
-        # Step 4: similarity search
-        distances, indices = temp_index.search(
-            np.array([query_embedding]).astype("float32"),
-            min(k, len(filtered_docs))
-        )
-
-
-        results = []
-
-
   
