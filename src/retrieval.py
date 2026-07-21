@@ -99,7 +99,6 @@ class WindowRetreiver:
 
 
 
-class TemporalRetriever:
 
  
 
