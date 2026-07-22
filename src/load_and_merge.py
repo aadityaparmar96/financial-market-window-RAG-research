@@ -56,4 +56,3 @@ master.to_csv(output_path, index=False)
 
 print(f"Saved: {output_path}")
 print(master.head())
-print(master.shape)
