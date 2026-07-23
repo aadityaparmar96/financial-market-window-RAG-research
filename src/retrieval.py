@@ -34,9 +34,9 @@ class WindowRetreiver:
 
     def retreive(
             self,
-            question : str,
-            window : str,
-            n_results: int = 5;
+            question: str,
+            window: str,
+            n_results: int = 5,
     ) -> list[RetrievedChunk]:
         
         if window not in VALID_WINDOWS:
