@@ -20,7 +20,7 @@ print(Counter(d["metadata"]["dataset_type"] for d in docs))
 dates = sorted(d["metadata"]["date"] for d in docs)
 print(f"\nOverall date range: {dates[0]} → {dates[-1]}")
 
-# 4. Date range per source (catches silent parsing failures)
+# 4. Date range per source 
 print("\nPer-source date range:")
 by_source = {}
 for d in docs:
