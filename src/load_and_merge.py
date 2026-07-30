@@ -26,7 +26,7 @@ for file in files:
     df = pd.read_csv(path)
 
     date_col = df.columns[0]
-    value_col = df.columns[1]
+    value_col = df.columns[2]
 
     series_name = file.replace(".csv", "")
 
