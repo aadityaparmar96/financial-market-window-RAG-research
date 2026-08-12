@@ -95,7 +95,13 @@ class WindowRetreiver:
             f"[{c['date']}]: {c['text']}" for c in chunks
         )
         
-
+retriever = WindowRetreiver()
+for w in VALID_WINDOWS:
+    try:
+        result = retriever.retreive("test", w, n_results=1)
+        print(f"{w}: OK, {len(result)} result(s)")
+    except Exception as e:
+        print(f"{w}: FAILED — {e}")
 
 
 
