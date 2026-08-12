@@ -15,10 +15,10 @@ class RetrievedChunk(TypedDict):
     text: str
     date : str
     source : str
-    dataset_type = str
-    distance = float
+    dataset_type : str
+    distance : float
 
-VALID_WINDOWS = ["5yr", "10yr", "15yr", "20yr"]
+VALID_WINDOWS = ["5yr", "10yr", "20yr", "50yr"]
 
 
 class WindowRetreiver:
@@ -26,7 +26,7 @@ class WindowRetreiver:
         self.client = chromadb.PersistentClient(path = chromadb_path)
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
         logger.info("WindowRetreiver initialized (path=%s)", chromadb_path)
-        pass
+        
 
 
 
