@@ -4,7 +4,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from data_process import load_all_documents, filter_by_window
 
-all_documents = load_all_documents
+all_documents = load_all_documents()
 
 CUTOFF = date(2015, 12, 31)
 WINDOWS = {
@@ -21,8 +21,8 @@ embedder = SentenceTransformer("all-MiniLM-L6-v2")
 for window_name, start_date in WINDOWS.items():
     window_docs = filter_by_window(
         all_documents,
-        start_date=start_date.isoformat,
-        end_date = CUTOFF.isoformat
+        start_date=start_date.isoformat(),
+        end_date = CUTOFF.isoformat()
     )
 
     print(f"{window_name} : {len(window_docs)} documents "
