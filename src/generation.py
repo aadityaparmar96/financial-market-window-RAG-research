@@ -17,3 +17,18 @@ Depends on:
     - retrieval.py (WindowRetreiver, VALID_WINDOWS)
     - An Anthropic API key set as an environment variable (ANTHROPIC_API_KEY)
 """
+
+import os
+import logging
+from typing import Optional
+
+import anthropic
+
+from retrieval import WindowRetreiver, VALID_WINDOWS
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("generation")
