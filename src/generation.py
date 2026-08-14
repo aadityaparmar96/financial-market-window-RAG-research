@@ -74,3 +74,17 @@ class AnswerGenerator:
         self.client = anthropic.Anthropic(api_key=api_key)
         self.retriever = WindowRetreiver(chromadb_path=chromadb_path)
         logger.info("AnswerGenerator initialized (model=%s)", MODEL_NAME)
+
+    def generateRag(
+            self,
+            question: str,
+            window: str,
+            n_results: 5,
+    )-> dict:
+        if window not in VALID_WINDOWS:
+            raise ValueError(
+                f"Invalid Window '{window}'. Must be one of '{VALID_WINDOWS}"
+            )
+
+        chunks = self.retriever.retreive(question, window, n_results)
+        context = self.retriever.format_context(chunks)
