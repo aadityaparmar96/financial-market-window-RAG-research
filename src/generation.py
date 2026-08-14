@@ -47,3 +47,30 @@ CRITICAL RULES:
    respond with exactly: INSUFFICIENT CONTEXT
 4. Always cite which time period your reasoning draws from.
 5. Never guess. Never supplement with outside knowledge."""
+
+
+
+# Generator 
+"""
+    Wraps the Anthropic client and a WindowRetreiver, exposing two modes:
+
+    - generate_rag(question, window)  → retrieval-augmented answer
+    - generate_baseline(question)     → raw LLM answer, no context at all
+
+    Both modes are needed because the baseline is how you measure how much
+    of the model's answer comes from its own training data rather than
+    from the retrieved knowledge base, to measure the leakage
+    """
+
+class AnswerGenerator:
+
+    def __int__(self, chromadb_path: str = "./chromadb"):
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+             raise EnvironmentError(
+                 "API KEY is not set"
+             )
+
+        self.client = anthropic.Anthropic(api_key=api_key)
+        self.retriever = WindowRetreiver(chromadb_path=chromadb_path)
+        logger.info("AnswerGenerator initialized (model=%s)", MODEL_NAME)
