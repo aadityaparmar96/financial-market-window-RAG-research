@@ -99,3 +99,11 @@ class AnswerGenerator:
             "Generating RAG answer | window=%s | chunks_retrieved=%d",
             window, len(chunks)
         )
+        response = self.client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=MAX_TOKENS,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+        answer_text = response.content[0].text
