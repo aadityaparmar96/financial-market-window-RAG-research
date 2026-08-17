@@ -88,3 +88,14 @@ class AnswerGenerator:
 
         chunks = self.retriever.retreive(question, window, n_results)
         context = self.retriever.format_context(chunks)
+
+        user_message = (
+            f"CONTEXT FROM KNOWLEDGE BASE:\n{context}\n\n"
+            f"QUESTION: {question}\n\n"
+            f"Answer based strictly on the context above."
+        )
+
+        logger.info(
+            "Generating RAG answer | window=%s | chunks_retrieved=%d",
+            window, len(chunks)
+        )
