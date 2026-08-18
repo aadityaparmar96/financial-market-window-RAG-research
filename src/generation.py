@@ -114,3 +114,11 @@ class AnswerGenerator:
             "retrieved_chunks": [],
             "context_used": None
         }
+
+    def generate_all_conditions(self, question: str, n_results: int=5) -> dict:
+        results = {"baseline": self.generate_baseline(question)}
+
+        for window in VALID_WINDOWS:
+            results[window] = self.generate_rag(question, window, n_results)
+
+        return results
