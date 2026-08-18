@@ -122,3 +122,14 @@ class AnswerGenerator:
             results[window] = self.generate_rag(question, window, n_results)
 
         return results
+
+    """
+        Convenience method: run baseline + all four RAG windows for a single
+        question in one call. This is the method your evaluation script
+        will actually use — one call per eval question, five results back.
+
+        Returns
+        -------
+        dict mapping condition name ("baseline", "5yr", "10yr", "20yr", "50yr")
+        to the result dict from generate_baseline() or generate_rag().
+        """
