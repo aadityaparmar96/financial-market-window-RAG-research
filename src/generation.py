@@ -107,3 +107,10 @@ class AnswerGenerator:
         )
 
         answer_text = response.content[0].text
+
+        return {
+            "answer":answer_text,
+            "window": "baseline",
+            "retrieved_chunks": [],
+            "context_used": None
+        }
