@@ -133,3 +133,14 @@ class AnswerGenerator:
         dict mapping condition name ("baseline", "5yr", "10yr", "20yr", "50yr")
         to the result dict from generate_baseline() or generate_rag().
         """
+
+
+    #CLI- SMoke test: 
+    if __name__ == "__main__":
+        generator = AnswerGenerator()
+
+        test_question = (
+        "Based on historical patterns, how does the S&P 500 typically "
+        "perform in the 12 months following a Federal Reserve interest "
+        "rate cut that follows a period of aggressive tightening?"
+    )
