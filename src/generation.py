@@ -144,3 +144,14 @@ class AnswerGenerator:
         "perform in the 12 months following a Federal Reserve interest "
         "rate cut that follows a period of aggressive tightening?"
     )
+
+    print(f"\nTest question: \"{test_question}\"\n")
+    print("=" * 70)
+
+    results = generator.generate_all_conditions(test_question)
+
+    for condition, result in results.items():
+        print(f"\n[{condition.upper()}]")
+        print(f"Chunks retrieved: {len(result['retrieved_chunks'])}")
+        print(f"Answer:\n{result['answer'][:500]}")
+        print("-" * 70)
