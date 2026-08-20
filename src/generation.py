@@ -154,4 +154,4 @@ class AnswerGenerator:
         print(f"\n[{condition.upper()}]")
         print(f"Chunks retrieved: {len(result['retrieved_chunks'])}")
         print(f"Answer:\n{result['answer'][:500]}")
-        print("-" * 70)
+        print("-" * 60)
