@@ -124,9 +124,7 @@ class AnswerGenerator:
         return results
 
     """
-        Convenience method: run baseline + all four RAG windows for a single
-        question in one call. This is the method your evaluation script
-        will actually use — one call per eval question, five results back.
+        Convenience method: 
 
         Returns
         -------
