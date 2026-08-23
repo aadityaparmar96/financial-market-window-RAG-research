@@ -153,3 +153,6 @@ class AnswerGenerator:
         print(f"Chunks retrieved: {len(result['retrieved_chunks'])}")
         print(f"Answer:\n{result['answer'][:500]}")
         print("-" * 70)
+
+
+        #20–30 questions, not just enough to clear n=5. Mix question types (single-fact recall vs. trend/comparative reasoning) — this also gives you a secondary finding ("window size matters more for trend questions than point facts") instead of just a bigger n.
