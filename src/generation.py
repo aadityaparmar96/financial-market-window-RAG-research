@@ -155,11 +155,11 @@ class AnswerGenerator:
         """
 
 
-    #CLI- SMoke test: 
-    if __name__ == "__main__":
-        generator = AnswerGenerator()
+# CLI smoke test
+if __name__ == "__main__":
+    generator = AnswerGenerator()
 
-        test_question = (
+    test_question = (
         "Based on historical patterns, how does the S&P 500 typically "
         "perform in the 12 months following a Federal Reserve interest "
         "rate cut that follows a period of aggressive tightening?"
@@ -175,6 +175,3 @@ class AnswerGenerator:
         print(f"Chunks retrieved: {len(result['retrieved_chunks'])}")
         print(f"Answer:\n{result['answer'][:500]}")
         print("-" * 70)
-
-
-        #20–30 questions, not just enough to clear n=5. Mix question types (single-fact recall vs. trend/comparative reasoning) — this also gives you a secondary finding ("window size matters more for trend questions than point facts") instead of just a bigger n.
