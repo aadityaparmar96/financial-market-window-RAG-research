@@ -64,7 +64,7 @@ CRITICAL RULES:
 
 class AnswerGenerator:
 
-    def __int__(self, chromadb_path: str = "./chromadb"):
+    def __init__(self, chromadb_path: str = "./chromadb"):
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
              raise EnvironmentError(
@@ -75,7 +75,7 @@ class AnswerGenerator:
         self.retriever = WindowRetreiver(chromadb_path=chromadb_path)
         logger.info("AnswerGenerator initialized (model=%s)", MODEL_NAME)
 
-    def generateRag(
+    def generate_rag(
             self,
             question: str,
             window: str,
@@ -109,15 +109,37 @@ class AnswerGenerator:
         answer_text = response.content[0].text
 
         return {
-            "answer":answer_text,
+            "answer": answer_text,
+            "window": window,
+            "retrieved_chunks": chunks,
+            "context_used": context,
+        }
+
+    def generate_baseline(self, question: str) -> dict:
+        """Generate an answer without providing retrieved context."""
+        user_message = (
+            "No knowledge-base context is available. Answer the question using "
+            "your own knowledge.\n\n"
+            f"QUESTION: {question}"
+        )
+
+        response = self.client.messages.create(
+            model=MODEL_NAME,
+            max_tokens=MAX_TOKENS,
+            messages=[{"role": "user", "content": user_message}],
+        )
+
+        return {
+            "answer": response.content[0].text,
             "window": "baseline",
             "retrieved_chunks": [],
-            "context_used": None
+            "context_used": None,
         }
 
     def generate_all_conditions(self, question: str, n_results: int=5) -> dict:
         results = {"baseline": self.generate_baseline(question)}
 
+        
         for window in VALID_WINDOWS:
             results[window] = self.generate_rag(question, window, n_results)
 
