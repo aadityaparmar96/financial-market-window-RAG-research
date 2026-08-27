@@ -58,5 +58,5 @@ for window in ["5yr", "10yr", "20yr", "50yr"]:
     collection = client.get_collection(f"finance_{window}")
     results = collection.query(query_texts=[test_query], n_results=2)
     print(f"\n=== {window} TOP RESULT ===")
-    print(results["documents"][0][0][:300])
+    print(results["documents"][0][0][:200])
     print(f"Date: {results['metadatas'][0][0]['date']}")
