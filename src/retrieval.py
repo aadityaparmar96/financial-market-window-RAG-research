@@ -36,7 +36,7 @@ class WindowRetreiver:
             self,
             question: str,
             window: str,
-            n_results: int = 5,
+            n_results: int = 10,
     ) -> list[RetrievedChunk]:
         
         if window not in VALID_WINDOWS:
