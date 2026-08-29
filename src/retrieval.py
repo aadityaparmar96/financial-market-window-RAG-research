@@ -82,7 +82,7 @@ class WindowRetreiver:
     def retrieve_all_windows(
             self,
             question: str,
-            n_results: int = 5,
+            n_results: int = 10,
     ) -> dict[str, list[RetrievedChunk]]:
         return {
             window : self.retreive(question, window, n_results)
