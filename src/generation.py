@@ -21,7 +21,7 @@ Depends on:
 import os
 import logging
 from typing import Optional
-
+from openai import OpenAI 
 import anthropic
 
 from retrieval import WindowRetreiver, VALID_WINDOWS
@@ -36,6 +36,7 @@ logger = logging.getLogger("generation")
 # Constant prompts and conditons
 
 MODEL_NAME = "claude-sonnet-4-5"
+#MODEL_NAME2 = "gpt-4"
 MAX_TOKENS = 600
 
 SYSTEM_PROMPT = """You are a financial research assistant analyzing historical economic data.
