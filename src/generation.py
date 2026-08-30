@@ -35,7 +35,7 @@ logger = logging.getLogger("generation")
 
 # Constant prompts and conditons
 
-MODEL_NAME = "claude-haiku-4-5"
+MODEL_NAME = "claude-sonnet-4-5"
 MAX_TOKENS = 600
 
 SYSTEM_PROMPT = """You are a financial research assistant analyzing historical economic data.
