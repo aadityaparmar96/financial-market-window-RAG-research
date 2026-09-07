@@ -3,6 +3,4 @@
 #0.5 points for partial
 #0 for completely off
 #to be compared vs lr 
-#code progress in way
-#code progress 2#
-#code progress 3#
+
