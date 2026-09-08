@@ -112,9 +112,16 @@ class AnswerGenerator:
         context = self.retriever.format_context(chunks)
 
         user_message = (
-            f"CONTEXT FROM KNOWLEDGE BASE:\n{context}\n\n"
-            f"QUESTION: {question}\n\n"
-            f"Answer based strictly on the context above."
+            #f"CONTEXT FROM KNOWLEDGE BASE:\n{context}\n\n"
+            #f"QUESTION: {question}\n\n"
+            #f"Answer based strictly on the context above."
+            
+    f"CONTEXT FROM KNOWLEDGE BASE ({window} window, ending 2015-12-31):\n"
+    f"{context}\n\n"
+    f"QUESTION: {question}\n\n"
+    f"Answer using the required DIRECTION / MAGNITUDE / PRECEDENT structure, "
+    f"based strictly on the context above."
+            
         )
 
         logger.info(
