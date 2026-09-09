@@ -3,4 +3,27 @@
 #0.5 points for partial
 #0 for completely off
 #to be compared vs lr 
+"""
+evaluation.py
+-------------
+Financial Market RAG System — Evaluation Module
+
+Responsibility: Take raw answers produced by generation.py (baseline + 4 RAG
+windows, per question), apply the manual scoring rubric, compute the
+improvement-over-baseline metric, and run statistical tests across the
+scored results.
+
+This module does NOT:
+    - Call the LLM (that's generation.py)
+    - Retrieve chunks (that's retrieval.py)
+    - Build knowledge bases (that's embeddings.py)
+
+Scoring is manual by design — the researcher reads each answer and assigns
+a score using score_answer(). This file provides the structure, storage,
+and statistical machinery around that manual judgment; it does not attempt
+to automate the scoring decision itself.
+
+On A second note, we might consider having a LLM judge to automatically evaluate the answers.
+"""
+
 
