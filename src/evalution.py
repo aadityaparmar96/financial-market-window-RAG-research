@@ -68,7 +68,19 @@ class QuestionRecord(TypedDict):
     source: str
     is_leakage_probe: bool  # True for Q11/Q12-style obscure-fact questions
 
-
+class ScoredAnswer(TypedDict):
+    """
+    One scored answer: a specific question, asked under a specific
+    condition (baseline or one of the four RAG windows), with a manually
+    assigned score.
+    """
+    question_id: str
+    condition: str           # "baseline", "5yr", "10yr", "20yr", "50yr"
+    raw_answer: str          # the full text Claude returned
+    score: Optional[float]   # None until manually scored; then 0.0/0.5/1.0
+    leaked: Optional[bool]   # only meaningful for leakage-probe questions
+    scorer: str              # who assigned this score, e.g. "primary" or "rater2"
+    notes: str                # free-text justification, esp. for 0.5 scores
 
 
 
