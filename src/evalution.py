@@ -27,3 +27,30 @@ On A second note, we might consider having a LLM judge to automatically evaluate
 """
 
 
+import json
+import logging
+from pathlib import Path
+from typing import TypedDict, Literal, Optional
+from datetime import datetime
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("evaluation")
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+CONDITIONS = ["baseline", "5yr", "10yr", "20yr", "50yr"]
+RAG_CONDITIONS = ["5yr", "10yr", "20yr", "50yr"]  # excludes baseline
+
+VALID_SCORES = [0.0, 0.5, 1.0]
+QUESTION_TYPES = ["FACT", "TREND"]
+
+
+
+
