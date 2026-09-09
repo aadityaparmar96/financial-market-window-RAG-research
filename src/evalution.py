@@ -51,6 +51,24 @@ RAG_CONDITIONS = ["5yr", "10yr", "20yr", "50yr"]  # excludes baseline
 VALID_SCORES = [0.0, 0.5, 1.0]
 QUESTION_TYPES = ["FACT", "TREND"]
 
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
+
+class QuestionRecord(TypedDict):
+    """
+    One entry in your locked eval question set — matches the format we've
+    been building question by question (Category A, B, ...).
+    """
+    id: str                 # e.g. "A1", "B3"
+    category: str           # e.g. "monetary_policy_cycle"
+    question_type: Literal["FACT", "TREND"]
+    question_text: str
+    correct_answer: str
+    source: str
+    is_leakage_probe: bool  # True for Q11/Q12-style obscure-fact questions
+
+
 
 
 
