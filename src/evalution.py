@@ -34,6 +34,7 @@ the generation stage.
 
 
 import json
+import os
 import logging
 from pathlib import Path
 from typing import TypedDict, Literal, Optional
@@ -166,5 +167,31 @@ class AnswerJudge:
         if question["is_leakage_probe"]:
             return self._check_leakage(question, raw_answer, condition)
 
+        judge_message = (
+            f"QUESTION: {question['question_text']}\n\n"
+            f"VERIFIED CORRECT ANSWER: {question['correct_answer']}\n\n"
+            f"TEST AI'S ANSWER:\n{raw_answer}\n\n"
+            f"Score this answer using the rubric."
+        )
+
+        response = self.client.messages.create(
+            model=JUDGE_MODEL,
+            max_tokens=JUDGE_MAX_TOKENS,
+            system=JUDGE_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": judge_message}],
+        )
+
+        judge_text = response.content[0].text
+        score, reasoning = self._parse_judge_response(judge_text)
+
+        return {
+            "question_id": question["id"],
+            "condition": condition,
+            "raw_answer": raw_answer,
+            "score": score,
+            "leaked": None,
+            "judge_reasoning": reasoning,
+            "scorer": "llm_judge",
+        }
         
-        
+            
