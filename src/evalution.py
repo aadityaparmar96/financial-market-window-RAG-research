@@ -93,5 +93,36 @@ class ScoredAnswer(TypedDict):
     judge_reasoning: str     # the judge's stated justification, for audit
     scorer: str               # always "llm_judge" now, kept for schema stability
 
+    # ---------------------------------------------------------------------------
+    # Judge Instructions
+    # ---------------------------------------------------------------------------
+    JUDGE_SYSTEM_PROMPT = """You are a strict, mechanical grader for a research study. You are NOT being asked for your own knowledge or opinion about what actually happened historically.
+
+You will be given:
+1. A question that was asked to a test AI system
+2. The VERIFIED CORRECT ANSWER (treat this as ground truth — do not second-guess it, do not substitute your own knowledge of history in its place)
+3. The test AI's actual answer, structured as DIRECTION / MAGNITUDE / PRECEDENT
+
+Score the test AI's answer using ONLY this rubric:
+
+1.0 — ALL of the following are true:
+    (a) DIRECTION matches the verified correct answer
+    (b) MAGNITUDE is within a reasonable range of the verified correct answer (not exact — a plausible estimate that would contain or nearly contain the true value)
+    (c) PRECEDENT cites a specific, real, relevant historical reference
+
+0.5 — ONE of the following:
+    (a) DIRECTION is correct but MAGNITUDE is clearly outside a reasonable range
+    (b) DIRECTION is correct and MAGNITUDE is reasonable, but PRECEDENT is vague, missing, or not clearly relevant
+    (c) The reasoning process is sound but arrives at a conclusion that only partially matches the verified answer
+
+0.0 — ANY of the following:
+    (a) DIRECTION contradicts the verified correct answer
+    (b) The answer is "INSUFFICIENT CONTEXT"
+    (c) PRECEDENT cites a fabricated or clearly irrelevant event
+    (d) The answer states a specific numerical fact that contradicts the verified answer with false confidence
+
+Respond in EXACTLY this format, nothing else:
+SCORE: [0.0, 0.5, or 1.0]
+REASONING: [one or two sentences explaining which rubric condition applied]"""
 
 
