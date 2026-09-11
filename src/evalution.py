@@ -126,3 +126,45 @@ SCORE: [0.0, 0.5, or 1.0]
 REASONING: [one or two sentences explaining which rubric condition applied]"""
 
 
+
+#---------------------
+# JUDGE FUNCTION: 
+#---------------------
+
+class AnswerJudge:
+    """
+    Wraps a Claude client configured specifically for scoring, separate
+    from the AnswerGenerator client in generation.py — kept distinct so
+    the generation and judging roles never accidentally share prompt
+    context or state.
+    """
+
+    def __init__(self):
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise EnvironmentError(
+                "ANTHROPIC_API_KEY is not set. Set it before running "
+                "evaluation.py."
+            )
+        self.client = anthropic.Anthropic(api_key=api_key)
+        logger.info("AnswerJudge initialized (model=%s)", JUDGE_MODEL)
+
+    def score(
+        self,
+        question: QuestionRecord,
+        raw_answer: str,
+        condition: str,
+    ) -> ScoredAnswer:
+        """
+        Send one answer to the judge and parse back a ScoredAnswer.
+
+        Leakage-probe questions are NOT scored on the 0/0.5/1.0 rubric —
+        they're checked separately for whether the exact figure appears
+        in the answer at all, since that's a binary leak/no-leak signal,
+        not a graded reasoning quality.
+        """
+        if question["is_leakage_probe"]:
+            return self._check_leakage(question, raw_answer, condition)
+
+        
+        
