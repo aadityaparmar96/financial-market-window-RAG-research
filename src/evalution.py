@@ -24,6 +24,12 @@ and statistical machinery around that manual judgment; it does not attempt
 to automate the scoring decision itself.
 
 On A second note, we might consider having a LLM judge to automatically evaluate the answers.
+
+Scoring is automated via a constrained LLM judge — see JUDGE_SYSTEM_PROMPT
+below. The judge is given the verified correct answer explicitly and
+instructed to score against it, not against its own general knowledge,
+to avoid reintroducing the same leakage problem this study measures in
+the generation stage.
 """
 
 
@@ -32,6 +38,7 @@ import logging
 from pathlib import Path
 from typing import TypedDict, Literal, Optional
 from datetime import datetime
+import anthropic
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,6 +58,8 @@ RAG_CONDITIONS = ["5yr", "10yr", "20yr", "50yr"]  # excludes baseline
 VALID_SCORES = [0.0, 0.5, 1.0]
 QUESTION_TYPES = ["FACT", "TREND"]
 
+JUDGE_MODEL = "claude-sonnet-5"   # not confirmed yet 
+JUDGE_MAX_TOKENS = 300
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -81,6 +90,8 @@ class ScoredAnswer(TypedDict):
     leaked: Optional[bool]   # only meaningful for leakage-probe questions
     scorer: str              # who assigned this score, e.g. "primary" or "rater2"
     notes: str                # free-text justification, esp. for 0.5 scores
+    judge_reasoning: str     # the judge's stated justification, for audit
+    scorer: str               # always "llm_judge" now, kept for schema stability
 
 
 
