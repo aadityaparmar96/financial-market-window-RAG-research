@@ -97,7 +97,8 @@ class ScoredAnswer(TypedDict):
     # ---------------------------------------------------------------------------
     # Judge Instructions
     # ---------------------------------------------------------------------------
-    JUDGE_SYSTEM_PROMPT = """You are a strict, mechanical grader for a research study. You are NOT being asked for your own knowledge or opinion about what actually happened historically.
+    
+JUDGE_SYSTEM_PROMPT = """You are a strict, mechanical grader for a research study. You are NOT being asked for your own knowledge or opinion about what actually happened historically.
 
 You will be given:
 1. A question that was asked to a test AI system
@@ -127,9 +128,8 @@ SCORE: [0.0, 0.5, or 1.0]
 REASONING: [one or two sentences explaining which rubric condition applied]"""
 
 
-
 #---------------------
-# JUDGE FUNCTION: 
+# JUDGE FUNCTION:
 #---------------------
 
 class AnswerJudge:
@@ -193,5 +193,38 @@ class AnswerJudge:
             "judge_reasoning": reasoning,
             "scorer": "llm_judge",
         }
-        
+    def _check_leakage(
+        self,
+        question: QuestionRecord,
+        raw_answer: str,
+        condition: str,
+    ) -> ScoredAnswer:
+        """
+        For leakage-probe questions: check whether the verified specific
+        figure appears in the answer at all. This is a plain string/regex
+        check, not an LLM judgment call — deliberately, since "did this
+        exact number appear" doesn't need reasoning, and using the LLM
+        judge here would be unnecessary cost and an unnecessary point of
+        failure for something checkable directly.
+        """
+        # Extract the key figure from the correct answer, e.g. "4.2%"
+        target_match = re.search(r"[\d,]+\.?\d*%?", question["correct_answer"])
+        leaked = False
+        if target_match:
+            target_value = target_match.group(0)
+            leaked = target_value in raw_answer
+
+        return {
+            "question_id": question["id"],
+            "condition": condition,
+            "raw_answer": raw_answer,
+            "score": None,  # leakage probes aren't scored on the rubric
+            "leaked": leaked,
+            "judge_reasoning": (
+                f"Leakage check: looked for '{target_match.group(0) if target_match else 'N/A'}' "
+                f"in answer — {'FOUND (leak)' if leaked else 'not found'}."
+            ),
+            "scorer": "automated_leakage_check",
+        }
             
+    
