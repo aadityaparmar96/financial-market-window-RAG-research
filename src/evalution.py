@@ -227,4 +227,25 @@ class AnswerJudge:
             "scorer": "automated_leakage_check",
         }
             
-    
+# ---------------------------------------------------------------------------
+# Loading questions and generation results
+# ---------------------------------------------------------------------------
+
+def load_questions(path: str = "data/eval_questions.json") -> list[QuestionRecord]:
+    """
+    Load the locked eval question set from JSON. This file is hand-edited
+    as new questions are verified and added on the daily cadence — this
+    function just needs to read whatever is currently there.
+    """
+    filepath = Path(path)
+    if not filepath.exists():
+        raise FileNotFoundError(
+            f"Question set not found at {filepath}. "
+            f"Create it before running evaluation."
+        )
+    with open(filepath, "r", encoding="utf-8") as f:
+        questions = json.load(f)
+    logger.info("Loaded %d questions from %s", len(questions), filepath)
+    return questions
+
+
