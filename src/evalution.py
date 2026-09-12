@@ -249,3 +249,64 @@ def load_questions(path: str = "data/eval_questions.json") -> list[QuestionRecor
     return questions
 
 
+# ---------------------------------------------------------------------------
+# Batch evaluation
+# ---------------------------------------------------------------------------
+
+def run_evaluation(
+    questions: list[QuestionRecord],
+    generator,          # an AnswerGenerator instance from generation.py
+    judge: AnswerJudge,
+    output_path: str = "results/scored_results.json",
+) -> list[ScoredAnswer]:
+    """
+    For every question, generate answers under all 5 conditions
+    (baseline + 4 RAG windows), then judge every answer.
+
+    This is the main entry point tying generation.py and evaluation.py
+    together — it does NOT retrieve or generate itself, it orchestrates
+    calls to objects built in generation.py.
+    """
+    all_scored: list[ScoredAnswer] = []
+
+    for i, question in enumerate(questions, 1):
+        logger.info(
+            "[%d/%d] Processing question %s (%s)",
+            i, len(questions), question["id"], question["question_type"]
+        )
+
+        # generate_all_conditions() returns {"baseline": {...}, "5yr": {...}, ...}
+        generation_results = generator.generate_all_conditions(
+            question["question_text"]
+        )
+
+        for condition, result in generation_results.items():
+            scored = judge.score(
+                question=question,
+                raw_answer=result["answer"],
+                condition=condition,
+            )
+            all_scored.append(scored)
+
+            if scored["leaked"] is not None:
+                logger.info(
+                    "  %s: LEAKAGE CHECK — %s",
+                    condition, "LEAKED" if scored["leaked"] else "clean"
+                )
+            else:
+                logger.info(
+                    "  %s: score=%s", condition, scored["score"]
+                )
+
+    _save_results(all_scored, output_path)
+    return all_scored
+
+
+def _save_results(results: list[ScoredAnswer], output_path: str) -> None:
+    filepath = Path(output_path)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    logger.info("Saved %d scored results to %s", len(results), filepath)
+
+
