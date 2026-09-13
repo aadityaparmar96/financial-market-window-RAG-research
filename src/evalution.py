@@ -310,3 +310,45 @@ def _save_results(results: list[ScoredAnswer], output_path: str) -> None:
     logger.info("Saved %d scored results to %s", len(results), filepath)
 
 
+
+# ---------------------------------------------------------------------------
+# Improvement-over-baseline computation
+# ---------------------------------------------------------------------------
+
+def compute_improvement_scores(
+    scored_results: list[ScoredAnswer],
+) -> dict[str, dict[str, float]]:
+    """
+    For every question, compute (RAG condition score - baseline score)
+    for each of the four windows. This delta, not the raw score, is your
+    locked primary metric per the improvement-over-baseline methodology.
+
+    Returns
+    -------
+    dict mapping question_id -> {"5yr": delta, "10yr": delta, ...}
+    Questions with unscored (None) baseline or RAG scores, or that are
+    leakage probes (score is always None), are skipped with a warning.
+    """
+    by_question: dict[str, dict[str, ScoredAnswer]] = {}
+    for r in scored_results:
+        by_question.setdefault(r["question_id"], {})[r["condition"]] = r
+
+    improvements: dict[str, dict[str, float]] = {}
+
+    for qid, condition_map in by_question.items():
+        baseline = condition_map.get("baseline")
+        if baseline is None or baseline["score"] is None:
+            logger.warning(
+                "Skipping %s: no scored baseline (leakage probe or unscored).",
+                qid
+            )
+            continue
+
+        improvements[qid] = {}
+        for window in RAG_CONDITIONS:
+            rag_result = condition_map.get(window)
+            if rag_result is None or rag_result["score"] is None:
+                continue
+            improvements[qid][window] = rag_result["score"] - baseline["score"]
+
+    return improvements
