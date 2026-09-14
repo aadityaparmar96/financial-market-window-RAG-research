@@ -492,3 +492,6 @@ if __name__ == "__main__":
     for i, doc in enumerate(docs[:3], 1):
         print(f"\n[{i}] text     : {doc['text']}")
         print(f"    metadata : {doc['metadata']}")
+# NEW — persist the full processed dataset to disk
+    output_path = get_data_directory() / "processed" / "all_documents.json"
+    save_document(docs, output_path)
