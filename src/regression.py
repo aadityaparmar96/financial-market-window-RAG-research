@@ -60,3 +60,23 @@ SOURCE_COLUMN_MAP = {
     "T10Y2YM": "yield_spread",
     "S&P500": "sp500_price",
 }
+
+# ---------------------------------------------------------------------------
+# Data loading — separate from data_process.py by design
+# ---------------------------------------------------------------------------
+"""
+    Load each relevant raw CSV, rename its value column per SOURCE_COLUMN_MAP,
+    resample to monthly frequency, and merge everything into one wide
+    dataframe indexed by month-end date.
+
+    Unlike data_process.py's per-row document approach, regression needs
+    one row per month with all indicators as columns, this is the
+    classic "wide" format for a feature matrix.
+    """
+def load_and_merge_raw_data(raw_dir: Optional[Path] = None) -> pd.DataFrame:
+    
+    if raw_dir is None:
+        # Reuses the same project-root detection logic conceptually,
+        # but kept local to this file to avoid a hard dependency on
+        # data_process.py's internals.
+        raw_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
