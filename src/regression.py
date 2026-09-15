@@ -80,3 +80,59 @@ def load_and_merge_raw_data(raw_dir: Optional[Path] = None) -> pd.DataFrame:
         # but kept local to this file to avoid a hard dependency on
         # data_process.py's internals.
         raw_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
+
+    merged: Optional[pd.DataFrame] = None
+
+    for stem, col_name in SOURCE_COLUMN_MAP.items():
+        filepath = raw_dir / f"{stem}.csv"
+        if not filepath.exists():
+            logger.warning("Expected file not found, skipping: %s", filepath)
+            continue
+
+        df = pd.read_csv(filepath)
+        date_col = next(
+            (c for c in df.columns if c.lower() in
+             ("date", "observation_date", "datetime")),
+            None
+        )
+        if date_col is None:
+            logger.warning("No date column found in %s, skipping.", filepath.name)
+            continue
+
+        value_col = [c for c in df.columns if c != date_col][0]
+
+        df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+        df = df.dropna(subset=[date_col])
+        df[value_col] = pd.to_numeric(df[value_col], errors="coerce")
+        df = df.dropna(subset=[value_col])
+
+        df = df[[date_col, value_col]].rename(
+            columns={date_col: "date", value_col: col_name}
+        )
+        df = df.set_index("date").resample("MS").mean()  # monthly, start-of-month
+
+        merged = df if merged is None else merged.join(df, how="outer")
+        logger.info("Loaded and merged %s -> column '%s' (%d rows)",
+                    stem, col_name, len(df))
+
+    if merged is None:
+        raise FileNotFoundError(
+            "No source files were loaded. Check SOURCE_COLUMN_MAP against "
+            "your actual data/raw/ filenames."
+        )
+
+    # GDP is quarterly natively; forward-fill to monthly rather than
+    # interpolate here, since regression features should reflect only
+    # information that would genuinely have been known at that point in
+    # time — interpolation (used in the RAG text pipeline) can leak
+    # slightly forward-looking smoothed values, which matters more for a
+    # model that is directly fitting on these numbers.
+    if "real_gdp" in merged.columns:
+        merged["real_gdp"] = merged["real_gdp"].ffill()
+
+    merged = merged.sort_index()
+    logger.info(
+        "Merged dataframe: %d rows, %s -> %s",
+        len(merged), merged.index.min().date(), merged.index.max().date()
+    )
+    return merged
