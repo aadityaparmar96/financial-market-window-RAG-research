@@ -136,3 +136,44 @@ def load_and_merge_raw_data(raw_dir: Optional[Path] = None) -> pd.DataFrame:
         len(merged), merged.index.min().date(), merged.index.max().date()
     )
     return merged
+# ---------------------------------------------------------------------------
+# Feature engineering
+# ---------------------------------------------------------------------------
+
+def build_features_and_target(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build lagged features and the binary target variable.
+
+    All features are lagged by 1 month to prevent look-ahead bias — a
+    prediction made "as of" month t can only use information that was
+    actually available at the end of month t, not month t's own outcome.
+
+    Target: 1 if S&P 500 price in month t+1 > month t, else 0.
+    """
+    df = df.copy()
+
+    df["sp500_return"] = df["sp500_price"].pct_change()
+
+    feature_cols = {
+        "unemployment": "unemployment_lag1",
+        "fed_funds_rate": "fed_funds_rate_lag1",
+        "cpi": "cpi_lag1",
+        "yield_spread": "yield_spread_lag1",
+        "sp500_return": "sp500_return_lag1",
+    }
+
+    for source_col, lagged_col in feature_cols.items():
+        if source_col in df.columns:
+            df[lagged_col] = df[source_col].shift(1)
+        else:
+            logger.warning("Expected column '%s' missing from merged data.", source_col)
+
+    # Target: did price go UP the following month?
+    df["target"] = (df["sp500_price"].shift(-1) > df["sp500_price"]).astype(int)
+
+    required = list(feature_cols.values()) + ["target"]
+    before = len(df)
+    df = df.dropna(subset=required)
+    logger.info("Feature engineering: %d -> %d rows after dropping NaNs", before, len(df))
+
+    return df
