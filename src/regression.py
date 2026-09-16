@@ -177,3 +177,33 @@ def build_features_and_target(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Feature engineering: %d -> %d rows after dropping NaNs", before, len(df))
 
     return df
+
+# ---------------------------------------------------------------------------
+# Windowing — matches the RAG track's four windows exactly
+# ---------------------------------------------------------------------------
+
+def get_window_slice(df: pd.DataFrame, window_name: str) -> pd.DataFrame:
+    """
+    Slice the full feature/target dataframe down to one window's training
+    range, using the same CUTOFF and WINDOW_YEARS as embeddings.py, so the
+    regression track and RAG track are trained on identical time spans.
+    """
+    if window_name not in WINDOW_YEARS:
+        raise ValueError(f"Unknown window '{window_name}'. Must be one of {list(WINDOW_YEARS)}.")
+
+    cutoff_ts = pd.Timestamp(CUTOFF)
+    start_ts = cutoff_ts - pd.DateOffset(years=WINDOW_YEARS[window_name])
+
+    sliced = df[(df.index >= start_ts) & (df.index <= cutoff_ts)]
+    return sliced
+
+
+def get_eval_slice(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    The fixed 2016-2024 holdout — identical across all four windows,
+    exactly mirroring how every RAG window is asked the same eval
+    questions regardless of its own training range.
+    """
+    return df[(df.index >= pd.Timestamp(EVAL_START)) & (df.index <= pd.Timestamp(EVAL_END))]
+
+
