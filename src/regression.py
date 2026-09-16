@@ -229,3 +229,64 @@ def check_class_balance(df: pd.DataFrame, label: str) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Model training and evaluation
+# ---------------------------------------------------------------------------
+
+FEATURE_COLUMNS = [
+    "unemployment_lag1",
+    "fed_funds_rate_lag1",
+    "cpi_lag1",
+    "yield_spread_lag1",
+    "sp500_return_lag1",
+]
+
+
+def train_and_evaluate_window(
+    train_df: pd.DataFrame,
+    eval_df: pd.DataFrame,
+    window_name: str,
+) -> dict:
+    """
+    Fit a logistic regression on train_df, evaluate on eval_df (the fixed
+    2016-2024 holdout), and return a results dict.
+
+    class_weight='balanced' is set unconditionally here, not just when
+    imbalance is detected — this keeps the four windows methodologically
+    identical to each other rather than applying different settings per
+    window based on their individual class balance, which would itself
+    become a confound in the window-size comparison.
+    """
+    X_train = train_df[FEATURE_COLUMNS]
+    y_train = train_df["target"]
+    X_eval = eval_df[FEATURE_COLUMNS]
+    y_eval = eval_df["target"]
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_eval_scaled = scaler.transform(X_eval)  # transform only, never re-fit on eval data
+
+    model = LogisticRegression(class_weight="balanced", random_state=42, max_iter=1000)
+    model.fit(X_train_scaled, y_train)
+
+    y_pred = model.predict(X_eval_scaled)
+    accuracy = accuracy_score(y_eval, y_pred)
+    report = classification_report(y_eval, y_pred, output_dict=True, zero_division=0)
+
+    coefficients = dict(zip(FEATURE_COLUMNS, model.coef_[0]))
+
+    logger.info(
+        "[%s] train_n=%d  eval_n=%d  accuracy=%.1f%%",
+        window_name, len(train_df), len(eval_df), accuracy * 100
+    )
+
+    return {
+        "window": window_name,
+        "train_n": len(train_df),
+        "eval_n": len(eval_df),
+        "accuracy": accuracy,
+        "classification_report": report,
+        "coefficients": coefficients,
+    }
+
+
