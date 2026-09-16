@@ -289,4 +289,43 @@ def train_and_evaluate_window(
         "coefficients": coefficients,
     }
 
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+def run_regression_experiment(raw_dir: Optional[Path] = None) -> dict[str, dict]:
+    """
+    Full pipeline: load raw data, engineer features, slice into the four
+    windows, train and evaluate each against the fixed 2016-2024 holdout.
+
+    Returns
+    -------
+    dict mapping window name -> results dict from train_and_evaluate_window()
+    """
+    merged = load_and_merge_raw_data(raw_dir)
+    featured = build_features_and_target(merged)
+
+    eval_df = get_eval_slice(featured)
+    if len(eval_df) == 0:
+        raise ValueError(
+            "Evaluation slice (2016-2024) is empty. Check that your raw "
+            "CSVs actually contain data past 2015 — the eval holdout must "
+            "come from real post-cutoff data, separate from any window's "
+            "training range."
+        )
+    check_class_balance(eval_df, "Eval (2016-2024)")
+
+    results = {}
+    for window_name in WINDOW_YEARS:
+        train_df = get_window_slice(featured, window_name)
+        if len(train_df) < 12:
+            logger.warning(
+                "[%s] Only %d training rows — results will be unreliable.",
+                window_name, len(train_df)
+            )
+        check_class_balance(train_df, window_name)
+        results[window_name] = train_and_evaluate_window(train_df, eval_df, window_name)
+
+    return results
+
 
