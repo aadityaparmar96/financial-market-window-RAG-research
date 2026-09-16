@@ -329,3 +329,29 @@ def run_regression_experiment(raw_dir: Optional[Path] = None) -> dict[str, dict]
     return results
 
 
+# ---------------------------------------------------------------------------
+# CLI smoke-test
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    """
+    Run from the project root:
+
+        python src/regression.py
+    """
+    results = run_regression_experiment()
+
+    print(f"\n{'='*60}")
+    print("REGRESSION RESULTS — Directional Accuracy by Window")
+    print(f"{'='*60}")
+    for window_name, r in results.items():
+        print(f"{window_name:6s}  train_n={r['train_n']:4d}  "
+              f"accuracy={r['accuracy']*100:5.1f}%")
+
+    print(f"\n{'='*60}")
+    print("Feature coefficients by window (sign = direction of effect)")
+    print(f"{'='*60}")
+    for window_name, r in results.items():
+        print(f"\n[{window_name}]")
+        for feat, coef in r["coefficients"].items():
+            print(f"  {feat:24s} {coef:+.4f}")
