@@ -207,3 +207,25 @@ def get_eval_slice(df: pd.DataFrame) -> pd.DataFrame:
     return df[(df.index >= pd.Timestamp(EVAL_START)) & (df.index <= pd.Timestamp(EVAL_END))]
 
 
+# ---------------------------------------------------------------------------
+# Class balance check
+# ---------------------------------------------------------------------------
+
+def check_class_balance(df: pd.DataFrame, label: str) -> None:
+    """
+    Log the target class distribution. S&P 500 monthly returns are
+    historically skewed toward positive months — if a window's training
+    data is meaningfully imbalanced, class_weight='balanced' (already set
+    in train_model()) becomes not just a nice-to-have but a requirement,
+    otherwise the model can achieve deceptively high accuracy by always
+    predicting the majority class.
+    """
+    counts = df["target"].value_counts(normalize=True).sort_index()
+    up_pct = counts.get(1, 0.0) * 100
+    down_pct = counts.get(0, 0.0) * 100
+    logger.info(
+        "%s class balance: %.1f%% up-months, %.1f%% down-months (n=%d)",
+        label, up_pct, down_pct, len(df)
+    )
+
+
