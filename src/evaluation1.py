@@ -351,3 +351,219 @@ def _save_results(results: list[ScoredAnswer], output_path: str) -> None:
     logger.info("Saved %d scored results to %s", len(results), filepath)
 
 
+# ---------------------------------------------------------------------------
+# Improvement-over-baseline (reason score)
+# ---------------------------------------------------------------------------
+
+def compute_improvement_scores(
+    scored_results: list[ScoredAnswer],
+) -> dict[str, dict[str, float]]:
+    by_question: dict[str, dict[str, ScoredAnswer]] = {}
+    for r in scored_results:
+        by_question.setdefault(r["question_id"], {})[r["condition"]] = r
+
+    improvements: dict[str, dict[str, float]] = {}
+
+    for qid, condition_map in by_question.items():
+        baseline = condition_map.get("baseline")
+        if baseline is None or baseline["score"] is None:
+            logger.warning("Skipping %s: no scored baseline.", qid)
+            continue
+
+        improvements[qid] = {}
+        for window in RAG_CONDITIONS:
+            rag_result = condition_map.get(window)
+            if rag_result is None or rag_result["score"] is None:
+                continue
+            improvements[qid][window] = rag_result["score"] - baseline["score"]
+
+    return improvements
+
+
+# ---------------------------------------------------------------------------
+# Numeric error aggregation (numeric score)
+# ---------------------------------------------------------------------------
+
+def aggregate_numeric_errors(
+    scored_results: list[ScoredAnswer],
+) -> dict[str, dict]:
+    """
+    For each condition, compute mean absolute error, mean relative error,
+    and coverage rate across only the questions that had a comparable
+    numeric target. Reports the subset size explicitly, since this is
+    never computed across your full question set.
+    """
+    by_condition: dict[str, list[NumericError]] = {c: [] for c in CONDITIONS}
+
+    for r in scored_results:
+        if r["numeric_error"] is not None:
+            by_condition[r["condition"]].append(r["numeric_error"])
+
+    summary = {}
+    for condition, errors in by_condition.items():
+        if not errors:
+            summary[condition] = {"n": 0}
+            continue
+
+        abs_errors = [e["absolute_error"] for e in errors]
+        rel_errors = [e["relative_error_pct"] for e in errors if e["relative_error_pct"] is not None]
+        coverage = [e["range_covered_truth"] for e in errors]
+
+        summary[condition] = {
+            "n": len(errors),
+            "mean_absolute_error": float(np.mean(abs_errors)),
+            "std_absolute_error": float(np.std(abs_errors, ddof=1)) if len(abs_errors) > 1 else 0.0,
+            "mean_relative_error_pct": float(np.mean(rel_errors)) if rel_errors else None,
+            "coverage_rate": float(np.mean(coverage)),
+        }
+
+    return summary
+
+# ---------------------------------------------------------------------------
+# Statistics on the reason-score improvements
+# ---------------------------------------------------------------------------
+
+def summarize_improvements(
+    improvements: dict[str, dict[str, float]],
+) -> dict[str, dict]:
+    """
+    Mean, std, and 95% confidence interval of improvement-over-baseline
+    per window, across all questions that had a valid delta.
+    """
+    by_window: dict[str, list[float]] = {w: [] for w in RAG_CONDITIONS}
+    for qid, deltas in improvements.items():
+        for window, delta in deltas.items():
+            by_window[window].append(delta)
+
+    summary = {}
+    for window, deltas in by_window.items():
+        if len(deltas) < 2:
+            summary[window] = {"n": len(deltas), "mean": None, "ci_95": None}
+            continue
+        mean = float(np.mean(deltas))
+        sem = stats.sem(deltas)
+        ci = stats.t.interval(0.95, len(deltas) - 1, loc=mean, scale=sem)
+        summary[window] = {
+            "n": len(deltas),
+            "mean": mean,
+            "std": float(np.std(deltas, ddof=1)),
+            "ci_95": [float(ci[0]), float(ci[1])],
+        }
+    return summary
+
+
+def cochrans_q_test(
+    questions: list[QuestionRecord],
+    scored_results: list[ScoredAnswer],
+    question_type_filter: Optional[str] = None,
+) -> dict:
+    """
+    Cochran's Q test on whether window condition significantly affects
+    the (binarized) reason score, across paired questions.
+
+    Scores are binarized at >= 1.0 = success, < 1.0 = failure, since
+    Cochran's Q requires binary outcomes. This is a simplification —
+    stated explicitly, since your actual scores are 0/0.5/1.0, not
+    strictly binary — worth noting in your methodology as a modeling
+    choice, not an oversight.
+    """
+    qtype_map = {q["id"]: q["question_type"] for q in questions}
+
+    by_question: dict[str, dict[str, float]] = {}
+    for r in scored_results:
+        if r["score"] is None:
+            continue
+        if question_type_filter and qtype_map.get(r["question_id"]) != question_type_filter:
+            continue
+        by_question.setdefault(r["question_id"], {})[r["condition"]] = r["score"]
+
+    # Only keep questions with a complete row across all 5 conditions
+    complete = {
+        qid: scores for qid, scores in by_question.items()
+        if all(c in scores for c in CONDITIONS)
+    }
+
+    if len(complete) < 3:
+        return {"error": f"Only {len(complete)} complete question rows — too few for Cochran's Q."}
+
+    matrix = np.array([
+        [1 if scores[c] >= 1.0 else 0 for c in CONDITIONS]
+        for scores in complete.values()
+    ])
+
+    k = matrix.shape[1]
+    n = matrix.shape[0]
+    col_sums = matrix.sum(axis=0)
+    row_sums = matrix.sum(axis=1)
+    grand_sum = matrix.sum()
+
+    numerator = k * (k - 1) * np.sum((col_sums - grand_sum / k) ** 2)
+    denominator = k * grand_sum - np.sum(row_sums ** 2)
+    q_stat = numerator / denominator if denominator != 0 else 0.0
+    df = k - 1
+    p_value = 1 - stats.chi2.cdf(q_stat, df)
+
+    return {
+        "n_questions": n,
+        "q_statistic": float(q_stat),
+        "df": df,
+        "p_value": float(p_value),
+        "significant_at_05": bool(p_value < 0.05),
+        "question_type_filter": question_type_filter or "ALL",
+    }
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    """
+    Run from the project root, after generation.py and retrieval.py are
+    working and ANTHROPIC_API_KEY is set:
+
+        python src/evaluation.py
+    """
+    from generation import AnswerGenerator  # local import, avoids circularity
+
+    questions = load_questions()
+    generator = AnswerGenerator()
+    judge = AnswerJudge()
+
+    scored = run_evaluation(questions, generator, judge)
+
+    improvements = compute_improvement_scores(scored)
+    improvement_summary = summarize_improvements(improvements)
+    numeric_summary = aggregate_numeric_errors(scored)
+    q_all = cochrans_q_test(questions, scored)
+    q_fact = cochrans_q_test(questions, scored, question_type_filter="FACT")
+    q_trend = cochrans_q_test(questions, scored, question_type_filter="TREND")
+
+    print(f"\n{'='*60}\nREASON SCORE — Improvement over baseline\n{'='*60}")
+    for window, s in improvement_summary.items():
+        if s["mean"] is not None:
+            print(f"{window:6s} n={s['n']:3d}  mean={s['mean']:+.3f}  "
+                  f"95% CI=[{s['ci_95'][0]:+.3f}, {s['ci_95'][1]:+.3f}]")
+
+    print(f"\n{'='*60}\nNUMERIC SCORE — Error by condition\n{'='*60}")
+    for cond, s in numeric_summary.items():
+        if s["n"] > 0:
+            print(f"{cond:10s} n={s['n']:3d}  MAE={s['mean_absolute_error']:.2f}  "
+                  f"MAPE={s.get('mean_relative_error_pct', 0):.1f}%  "
+                  f"coverage={s['coverage_rate']*100:.0f}%")
+        else:
+            print(f"{cond:10s} n=0 (no comparable numeric questions)")
+
+    print(f"\n{'='*60}\nCOCHRAN'S Q TEST\n{'='*60}")
+    print("ALL:  ", q_all)
+    print("FACT: ", q_fact)
+    print("TREND:", q_trend)
+
+    with open("results/final_summary.json", "w", encoding="utf-8") as f:
+        json.dump({
+            "improvement_summary": improvement_summary,
+            "numeric_summary": numeric_summary,
+            "cochrans_q_all": q_all,
+            "cochrans_q_fact": q_fact,
+            "cochrans_q_trend": q_trend,
+        }, f, indent=2, ensure_ascii=False)
