@@ -259,4 +259,95 @@ class AnswerJudge:
             "scorer": "automated_leakage_check",
         }
 
+# ---------------------------------------------------------------------------
+# Numeric error computation
+# ---------------------------------------------------------------------------
+
+def compute_numeric_error(parsed: dict) -> Optional[NumericError]:
+    """
+    Compute absolute and relative error from a parsed judge response.
+    Returns None if the question had no extractable numeric target on
+    both sides — expected and correct for many questions, not a failure.
+    """
+    actual = parsed["numeric_actual"]
+    low = parsed["numeric_predicted_low"]
+    high = parsed["numeric_predicted_high"]
+
+    if actual is None or low is None or high is None:
+        return None
+
+    midpoint = (low + high) / 2
+    absolute_error = abs(midpoint - actual)
+    relative_error = (absolute_error / abs(actual)) * 100 if actual != 0 else None
+    covered = low <= actual <= high
+
+    return {
+        "actual": actual,
+        "predicted_midpoint": midpoint,
+        "predicted_range": [low, high],
+        "absolute_error": absolute_error,
+        "relative_error_pct": relative_error,
+        "range_covered_truth": covered,
+        "unit": parsed["numeric_unit"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Loading questions
+# ---------------------------------------------------------------------------
+
+def load_questions(path: str = "data/eval_questions.json") -> list[QuestionRecord]:
+    filepath = Path(path)
+    if not filepath.exists():
+        raise FileNotFoundError(f"Question set not found at {filepath}.")
+    with open(filepath, "r", encoding="utf-8") as f:
+        questions = json.load(f)
+    logger.info("Loaded %d questions from %s", len(questions), filepath)
+    return questions
+
+
+# ---------------------------------------------------------------------------
+# Batch evaluation
+# ---------------------------------------------------------------------------
+
+def run_evaluation(
+    questions: list[QuestionRecord],
+    generator,          # an AnswerGenerator instance from generation.py
+    judge: AnswerJudge,
+    output_path: str = "results/scored_results.json",
+) -> list[ScoredAnswer]:
+    all_scored: list[ScoredAnswer] = []
+
+    for i, question in enumerate(questions, 1):
+        logger.info(
+            "[%d/%d] Processing %s (%s)",
+            i, len(questions), question["id"], question["question_type"]
+        )
+
+        generation_results = generator.generate_all_conditions(question["question_text"])
+
+        for condition, result in generation_results.items():
+            scored = judge.score(question, result["answer"], condition)
+            all_scored.append(scored)
+
+            if scored["leaked"] is not None:
+                logger.info("  %s: LEAKAGE — %s",
+                            condition, "LEAKED" if scored["leaked"] else "clean")
+            else:
+                numeric_note = ""
+                if scored["numeric_error"]:
+                    numeric_note = f" (abs_err={scored['numeric_error']['absolute_error']:.2f})"
+                logger.info("  %s: score=%s%s", condition, scored["score"], numeric_note)
+
+    _save_results(all_scored, output_path)
+    return all_scored
+
+
+def _save_results(results: list[ScoredAnswer], output_path: str) -> None:
+    filepath = Path(output_path)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    logger.info("Saved %d scored results to %s", len(results), filepath)
+
 
