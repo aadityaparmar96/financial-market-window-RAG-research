@@ -273,6 +273,11 @@ def train_and_evaluate_window(
     X_train_scaled = scaler.fit_transform(X_train)
     X_eval_scaled = scaler.transform(X_eval)  # transform only, never re-fit on eval data
 
+    # Diagnostic: confirm whether eval-period values fall far outside the
+    # range the scaler learned from training data, which would explain a
+    # model collapsing into a constant prediction.
+    print(f"[{window_name}] eval feature z-score range: "
+          f"min={X_eval_scaled.min():.1f}, max={X_eval_scaled.max():.1f}")
     model = LogisticRegression(class_weight="balanced", random_state=42, max_iter=1000)
     model.fit(X_train_scaled, y_train)
 
@@ -298,6 +303,65 @@ def train_and_evaluate_window(
         "coefficients": coefficients,
     }
 
+def train_and_evaluate_window_regularized(
+    train_df: pd.DataFrame,
+    eval_df: pd.DataFrame,
+    window_name: str,
+    C: float = 0.1,
+) -> dict:
+    """
+    Identical to train_and_evaluate_window(), except with explicit L2
+    regularization strength controlled via C (smaller C = stronger
+    regularization = smaller coefficients = more resistant to sigmoid
+    saturation on extreme, out-of-training-distribution eval values).
+
+    This is a robustness comparison, not a replacement — both the
+    unregularized (default C=1.0) and this stronger-regularization
+    version should be reported side by side, since the contrast itself
+    is the finding: does constraining coefficient size prevent the
+    narrow-window collapse, and if so, at what cost to overall fit.
+    """
+    X_train = train_df[FEATURE_COLUMNS]
+    y_train = train_df["target"]
+    X_eval = eval_df[FEATURE_COLUMNS]
+    y_eval = eval_df["target"]
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_eval_scaled = scaler.transform(X_eval)
+
+    print(f"[{window_name} | C={C}] eval feature z-score range: "
+          f"min={X_eval_scaled.min():.1f}, max={X_eval_scaled.max():.1f}")
+
+    model = LogisticRegression(
+        class_weight="balanced",
+        C=C,
+        random_state=42,
+        max_iter=1000,
+    )
+    model.fit(X_train_scaled, y_train)
+
+    y_pred = model.predict(X_eval_scaled)
+    accuracy = accuracy_score(y_eval, y_pred)
+    balanced_acc = balanced_accuracy_score(y_eval, y_pred)
+    predicted_up_rate = float(np.mean(y_pred))
+    coefficients = dict(zip(FEATURE_COLUMNS, model.coef_[0]))
+
+    logger.info(
+        "[%s | C=%.2f] accuracy=%.1f%%  balanced_acc=%.1f%%  pred_up_rate=%.1f%%",
+        window_name, C, accuracy * 100, balanced_acc * 100, predicted_up_rate * 100
+    )
+
+    return {
+        "window": window_name,
+        "C": C,
+        "train_n": len(train_df),
+        "eval_n": len(eval_df),
+        "accuracy": accuracy,
+        "balanced_accuracy": balanced_acc,
+        "predicted_up_rate": predicted_up_rate,
+        "coefficients": coefficients,
+    }
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -368,3 +432,15 @@ if __name__ == "__main__":
         print(f"\n[{window_name}]")
         for feat, coef in r["coefficients"].items():
             print(f"  {feat:24s} {coef:+.4f}")
+
+        print(f"\n{'='*60}")
+    print("REGULARIZATION COMPARISON — C=1.0 (default) vs C=0.1 (stronger)")
+    print(f"{'='*60}")
+
+    for window_name in WINDOW_YEARS:
+        train_df = get_window_slice(featured, window_name)
+        reg_result = train_and_evaluate_window_regularized(train_df, eval_df, window_name, C=0.1)
+        default_acc = results[window_name]["accuracy"]
+        print(f"{window_name:6s}  default(C=1.0) acc={default_acc*100:5.1f}%  "
+              f"regularized(C=0.1) acc={reg_result['accuracy']*100:5.1f}%  "
+              f"pred_up_rate={reg_result['predicted_up_rate']*100:5.1f}%")
