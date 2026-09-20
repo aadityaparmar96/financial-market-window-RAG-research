@@ -206,6 +206,14 @@ def get_eval_slice(df: pd.DataFrame) -> pd.DataFrame:
     """
     return df[(df.index >= pd.Timestamp(EVAL_START)) & (df.index <= pd.Timestamp(EVAL_END))]
 
+def naive_baseline_accuracy(eval_df: pd.DataFrame) -> float:
+    """
+    Accuracy of always predicting the majority class in the eval set.
+    Every reported model accuracy must be compared against this — a
+    model scoring below this number is doing worse than doing nothing.
+    """
+    majority_class = eval_df["target"].mode()[0]
+    return (eval_df["target"] == majority_class).mean()
 
 # ---------------------------------------------------------------------------
 # Class balance check
