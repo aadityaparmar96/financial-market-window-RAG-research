@@ -29,8 +29,7 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, classification_report
-
+from sklearn.metrics import accuracy_score, classification_report, balanced_accuracy_score
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
@@ -279,20 +278,22 @@ def train_and_evaluate_window(
 
     y_pred = model.predict(X_eval_scaled)
     accuracy = accuracy_score(y_eval, y_pred)
+    balanced_acc = balanced_accuracy_score(y_eval, y_pred)
+    predicted_up_rate = float(np.mean(y_pred))
     report = classification_report(y_eval, y_pred, output_dict=True, zero_division=0)
-
     coefficients = dict(zip(FEATURE_COLUMNS, model.coef_[0]))
 
     logger.info(
-        "[%s] train_n=%d  eval_n=%d  accuracy=%.1f%%",
-        window_name, len(train_df), len(eval_df), accuracy * 100
+        "[%s] train_n=%d  eval_n=%d  accuracy=%.1f%%  balanced_acc=%.1f%%  pred_up_rate=%.1f%%",
+        window_name, len(train_df), len(eval_df), accuracy * 100, balanced_acc * 100, predicted_up_rate * 100
     )
-
     return {
         "window": window_name,
         "train_n": len(train_df),
         "eval_n": len(eval_df),
         "accuracy": accuracy,
+        "balanced_accuracy": balanced_acc,
+        "predicted_up_rate": predicted_up_rate,
         "classification_report": report,
         "coefficients": coefficients,
     }
@@ -342,19 +343,23 @@ def run_regression_experiment(raw_dir: Optional[Path] = None) -> dict[str, dict]
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    """
-    Run from the project root:
-
-        python src/regression.py
-    """
     results = run_regression_experiment()
+
+    merged = load_and_merge_raw_data()
+    featured = build_features_and_target(merged)
+    eval_df = get_eval_slice(featured)
+    baseline = naive_baseline_accuracy(eval_df)
 
     print(f"\n{'='*60}")
     print("REGRESSION RESULTS — Directional Accuracy by Window")
     print(f"{'='*60}")
+    print(f"NAIVE BASELINE (always predict majority class): {baseline*100:.1f}%\n")
     for window_name, r in results.items():
+        flag = "  <-- BELOW BASELINE" if r["accuracy"] < baseline else ""
         print(f"{window_name:6s}  train_n={r['train_n']:4d}  "
-              f"accuracy={r['accuracy']*100:5.1f}%")
+              f"accuracy={r['accuracy']*100:5.1f}%  "
+              f"balanced_acc={r['balanced_accuracy']*100:5.1f}%  "
+              f"pred_up_rate={r['predicted_up_rate']*100:5.1f}%{flag}")
 
     print(f"\n{'='*60}")
     print("Feature coefficients by window (sign = direction of effect)")
