@@ -18,6 +18,15 @@ Depends on:
     - An Anthropic API key set as an environment variable (ANTHROPIC_API_KEY)
 """
 
+BASELINE_SYSTEM_PROMPT = """Answer the following question directly, structuring your answer in exactly these three labeled parts:
+
+DIRECTION: your prediction or conclusion in one sentence.
+MAGNITUDE: your estimated size or scale, as a range if uncertain. Write "N/A" if not applicable.
+PRECEDENT: any specific historical event or data you are basing your reasoning on, if any.
+
+Do not add commentary outside these three sections."""
+
+
 import os
 import logging
 from typing import Optional
@@ -101,7 +110,7 @@ class AnswerGenerator:
             self,
             question: str,
             window: str,
-            n_results: 5,
+            n_results: int = 5,
     )-> dict:
         if window not in VALID_WINDOWS:
             raise ValueError(
@@ -131,7 +140,7 @@ class AnswerGenerator:
         response = self.client.messages.create(
             model=MODEL_NAME,
             max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
+            system=REFINED_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
         )
 
@@ -145,25 +154,20 @@ class AnswerGenerator:
         }
 
     def generate_baseline(self, question: str) -> dict:
-        """Generate an answer without providing retrieved context."""
-        user_message = (
-            "No knowledge-base context is available. Answer the question using "
-            "your own knowledge.\n\n"
-            f"QUESTION: {question}"
-        )
+     """Generate an answer without providing retrieved context."""
+     response = self.client.messages.create(
+        model=MODEL_NAME,
+        max_tokens=MAX_TOKENS,
+        system=BASELINE_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": question}],
+     )
 
-        response = self.client.messages.create(
-            model=MODEL_NAME,
-            max_tokens=MAX_TOKENS,
-            messages=[{"role": "user", "content": user_message}],
-        )
-
-        return {
-            "answer": response.content[0].text,
-            "window": "baseline",
-            "retrieved_chunks": [],
-            "context_used": None,
-        }
+     return {
+        "answer": response.content[0].text,
+        "window": "baseline",
+        "retrieved_chunks": [],
+        "context_used": None,
+     }
 
     def generate_all_conditions(self, question: str, n_results: int=5) -> dict:
         results = {"baseline": self.generate_baseline(question)}
