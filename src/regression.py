@@ -252,3 +252,159 @@ def clip_extreme_values(X_scaled: np.ndarray, clip_at: float = CLIP_THRESHOLD) -
 # Model training with proper hyperparameter search
 # ---------------------------------------------------------------------------
 
+def train_and_evaluate_window(
+    train_df: pd.DataFrame,
+    eval_df: pd.DataFrame,
+    window_name: str,
+    use_clipping: bool = True,
+) -> dict:
+    """
+    Fit a logistic regression with C selected via TimeSeriesSplit +
+    GridSearchCV performed entirely within train_df — the eval_df
+    (2016-2024) is never used for any training decision, only for the
+    final reported metrics.
+    """
+    X_train = train_df[FEATURE_COLUMNS]
+    y_train = train_df["target"]
+    X_eval = eval_df[FEATURE_COLUMNS]
+    y_eval = eval_df["target"]
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_eval_scaled = scaler.transform(X_eval)
+
+    z_min, z_max = X_eval_scaled.min(), X_eval_scaled.max()
+    logger.info("[%s] eval feature z-score range (pre-clip): min=%.1f, max=%.1f",
+                window_name, z_min, z_max)
+
+    if use_clipping:
+        X_train_scaled = clip_extreme_values(X_train_scaled)
+        X_eval_scaled = clip_extreme_values(X_eval_scaled)
+
+    # Hyperparameter search — respects chronological order, never touches eval_df
+    n_splits = min(5, max(2, len(train_df) // 12))  # fewer splits for small windows
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+
+    grid = GridSearchCV(
+        LogisticRegression(class_weight="balanced", max_iter=1000, random_state=42),
+        param_grid={"C": C_GRID},
+        cv=tscv,
+        scoring="balanced_accuracy",
+    )
+    grid.fit(X_train_scaled, y_train)
+    best_C = grid.best_params_["C"]
+    logger.info("[%s] GridSearchCV selected C=%.3f (cv folds=%d)", window_name, best_C, n_splits)
+
+    model = grid.best_estimator_  # already refit on full X_train_scaled by GridSearchCV
+
+    y_pred = model.predict(X_eval_scaled)
+    y_proba = model.predict_proba(X_eval_scaled)[:, 1]
+
+    accuracy = accuracy_score(y_eval, y_pred)
+    balanced_acc = balanced_accuracy_score(y_eval, y_pred)
+    predicted_up_rate = float(np.mean(y_pred))
+    report = classification_report(y_eval, y_pred, output_dict=True, zero_division=0)
+
+    try:
+        auc = roc_auc_score(y_eval, y_proba)
+    except ValueError:
+        auc = None  # can happen if y_eval has only one class present
+
+    coefficients = dict(zip(FEATURE_COLUMNS, model.coef_[0]))
+
+    logger.info(
+        "[%s] C=%.3f  accuracy=%.1f%%  balanced_acc=%.1f%%  "
+        "pred_up_rate=%.1f%%  auc=%s",
+        window_name, best_C, accuracy * 100, balanced_acc * 100,
+        predicted_up_rate * 100, f"{auc:.3f}" if auc is not None else "N/A"
+    )
+
+    return {
+        "window": window_name,
+        "best_C": best_C,
+        "train_n": len(train_df),
+        "eval_n": len(eval_df),
+        "accuracy": accuracy,
+        "balanced_accuracy": balanced_acc,
+        "predicted_up_rate": predicted_up_rate,
+        "roc_auc": auc,
+        "eval_z_score_range": [float(z_min), float(z_max)],
+        "classification_report": report,
+        "coefficients": coefficients,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
+def run_regression_experiment(raw_dir: Optional[Path] = None) -> dict[str, dict]:
+    merged = load_and_merge_raw_data(raw_dir)
+    featured = build_features_and_target(merged)
+
+    eval_df = get_eval_slice(featured)
+    if len(eval_df) == 0:
+        raise ValueError(
+            "Evaluation slice (2016-2024) is empty. Check that your raw "
+            "CSVs actually contain data past 2015."
+        )
+    check_class_balance(eval_df, "Eval (2016-2024)")
+
+    results = {}
+    for window_name in WINDOW_YEARS:
+        train_df = get_window_slice(featured, window_name)
+        if len(train_df) < 12:
+            logger.warning(
+                "[%s] Only %d training rows — results will be unreliable.",
+                window_name, len(train_df)
+            )
+        check_class_balance(train_df, window_name)
+        check_multicollinearity(train_df, window_name)
+        results[window_name] = train_and_evaluate_window(train_df, eval_df, window_name)
+
+    return results
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    """
+    Run from the project root:
+
+        python src/regression.py
+    """
+    results = run_regression_experiment()
+
+    merged = load_and_merge_raw_data()
+    featured = build_features_and_target(merged)
+    eval_df = get_eval_slice(featured)
+    baseline = naive_baseline_accuracy(eval_df)
+
+    print(f"\n{'='*70}")
+    print("REGRESSION RESULTS — Properly Tuned (TimeSeriesSplit + Clipping)")
+    print(f"{'='*70}")
+    print(f"NAIVE BASELINE (always predict majority class): {baseline*100:.1f}%\n")
+
+    for window_name, r in results.items():
+        flag = "  <-- BELOW BASELINE" if r["accuracy"] < baseline else ""
+        auc_str = f"{r['roc_auc']:.3f}" if r["roc_auc"] is not None else "N/A"
+        print(f"{window_name:6s}  best_C={r['best_C']:6.3f}  train_n={r['train_n']:4d}  "
+              f"accuracy={r['accuracy']*100:5.1f}%  balanced_acc={r['balanced_accuracy']*100:5.1f}%  "
+              f"auc={auc_str}  pred_up_rate={r['predicted_up_rate']*100:5.1f}%{flag}")
+
+    print(f"\n{'='*70}")
+    print("Feature coefficients by window")
+    print(f"{'='*70}")
+    for window_name, r in results.items():
+        print(f"\n[{window_name}] (C={r['best_C']})")
+        for feat, coef in r["coefficients"].items():
+            print(f"  {feat:24s} {coef:+.4f}")
+
+    import json
+    output_path = Path("results") / "regression_results.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2, default=str)
+    print(f"\nResults saved to {output_path}")
