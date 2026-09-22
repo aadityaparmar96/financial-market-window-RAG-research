@@ -1,0 +1,194 @@
+{
+  "5yr": {
+    "window": "5yr",
+    "best_C": 10.0,
+    "train_n": 60,
+    "eval_n": 37,
+    "accuracy": 0.3783783783783784,
+    "balanced_accuracy": 0.4527972027972028,
+    "predicted_up_rate": 0.2972972972972973,
+    "roc_auc": 0.5524475524475524,
+    "eval_z_score_range": [
+      -3.8895265120602356,
+      70.03940361343348
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 0.2692307692307692,
+        "recall": 0.6363636363636364,
+        "f1-score": 0.3783783783783784,
+        "support": 11.0
+      },
+      "1": {
+        "precision": 0.6363636363636364,
+        "recall": 0.2692307692307692,
+        "f1-score": 0.3783783783783784,
+        "support": 26.0
+      },
+      "accuracy": 0.3783783783783784,
+      "macro avg": {
+        "precision": 0.4527972027972028,
+        "recall": 0.4527972027972028,
+        "f1-score": 0.3783783783783784,
+        "support": 37.0
+      },
+      "weighted avg": {
+        "precision": 0.5272160272160272,
+        "recall": 0.3783783783783784,
+        "f1-score": 0.3783783783783784,
+        "support": 37.0
+      }
+    },
+    "coefficients": {
+      "unemployment_lag1": 1.3763211618361648,
+      "fed_funds_rate_lag1": -0.10075452320517747,
+      "cpi_lag1": 1.1229061729915615,
+      "yield_spread_lag1": 0.017703217004164756,
+      "sp500_return_lag1": -0.5259114263846841
+    }
+  },
+  "10yr": {
+    "window": "10yr",
+    "best_C": 1.0,
+    "train_n": 120,
+    "eval_n": 37,
+    "accuracy": 0.35135135135135137,
+    "balanced_accuracy": 0.38111888111888115,
+    "predicted_up_rate": 0.3783783783783784,
+    "roc_auc": 0.3986013986013986,
+    "eval_z_score_range": [
+      -1.8477059269633498,
+      2.6197112799407347
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 0.21739130434782608,
+        "recall": 0.45454545454545453,
+        "f1-score": 0.29411764705882354,
+        "support": 11.0
+      },
+      "1": {
+        "precision": 0.5714285714285714,
+        "recall": 0.3076923076923077,
+        "f1-score": 0.4,
+        "support": 26.0
+      },
+      "accuracy": 0.35135135135135137,
+      "macro avg": {
+        "precision": 0.3944099378881987,
+        "recall": 0.38111888111888115,
+        "f1-score": 0.34705882352941175,
+        "support": 37.0
+      },
+      "weighted avg": {
+        "precision": 0.46617424878294444,
+        "recall": 0.35135135135135137,
+        "f1-score": 0.36852146263910973,
+        "support": 37.0
+      }
+    },
+    "coefficients": {
+      "unemployment_lag1": 0.8857515334318169,
+      "fed_funds_rate_lag1": 0.49547020286816834,
+      "cpi_lag1": 0.3793581654721204,
+      "yield_spread_lag1": -0.47752655468794203,
+      "sp500_return_lag1": 0.04390896637913524
+    }
+  },
+  "20yr": {
+    "window": "20yr",
+    "best_C": 0.01,
+    "train_n": 240,
+    "eval_n": 37,
+    "accuracy": 0.2972972972972973,
+    "balanced_accuracy": 0.5,
+    "predicted_up_rate": 0.0,
+    "roc_auc": 0.5594405594405595,
+    "eval_z_score_range": [
+      -1.8992477732958948,
+      2.0684867735031243
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 0.2972972972972973,
+        "recall": 1.0,
+        "f1-score": 0.4583333333333333,
+        "support": 11.0
+      },
+      "1": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1-score": 0.0,
+        "support": 26.0
+      },
+      "accuracy": 0.2972972972972973,
+      "macro avg": {
+        "precision": 0.14864864864864866,
+        "recall": 0.5,
+        "f1-score": 0.22916666666666666,
+        "support": 37.0
+      },
+      "weighted avg": {
+        "precision": 0.08838568298027759,
+        "recall": 0.2972972972972973,
+        "f1-score": 0.13626126126126126,
+        "support": 37.0
+      }
+    },
+    "coefficients": {
+      "unemployment_lag1": 0.09927579337445688,
+      "fed_funds_rate_lag1": 0.013488717718908673,
+      "cpi_lag1": 0.008458136683037515,
+      "yield_spread_lag1": -0.022468149086718743,
+      "sp500_return_lag1": -0.0020052060336281066
+    }
+  },
+  "50yr": {
+    "window": "50yr",
+    "best_C": 0.01,
+    "train_n": 474,
+    "eval_n": 37,
+    "accuracy": 0.5135135135135135,
+    "balanced_accuracy": 0.548951048951049,
+    "predicted_up_rate": 0.43243243243243246,
+    "roc_auc": 0.5804195804195804,
+    "eval_z_score_range": [
+      -2.067467423065119,
+      1.892639502445235
+    ],
+    "classification_report": {
+      "0": {
+        "precision": 0.3333333333333333,
+        "recall": 0.6363636363636364,
+        "f1-score": 0.4375,
+        "support": 11.0
+      },
+      "1": {
+        "precision": 0.75,
+        "recall": 0.46153846153846156,
+        "f1-score": 0.5714285714285714,
+        "support": 26.0
+      },
+      "accuracy": 0.5135135135135135,
+      "macro avg": {
+        "precision": 0.5416666666666666,
+        "recall": 0.548951048951049,
+        "f1-score": 0.5044642857142857,
+        "support": 37.0
+      },
+      "weighted avg": {
+        "precision": 0.6261261261261262,
+        "recall": 0.5135135135135135,
+        "f1-score": 0.5316119691119691,
+        "support": 37.0
+      }
+    },
+    "coefficients": {
+      "unemployment_lag1": 0.09968213226028136,
+      "fed_funds_rate_lag1": 0.019599574469822252,
+      "cpi_lag1": 0.08117296991133598,
+      "yield_spread_lag1": -0.03986268560090347,
+      "sp500_return_lag1": -0.028743648454043147
+    }
+  }
+}
