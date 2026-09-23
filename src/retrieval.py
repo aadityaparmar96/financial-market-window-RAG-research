@@ -1,9 +1,6 @@
-#retrieval works 
-#retrieval check dones
-
 import logging
-from datetime import datetime, timedelta
 from typing import TypedDict
+
 import chromadb
 from sentence_transformers import SentenceTransformer
 
@@ -14,34 +11,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger("retrieval")
 
+
 class RetrievedChunk(TypedDict):
     text: str
-    date : str
-    source : str
-    dataset_type : str
-    distance : float
+    date: str
+    source: str
+    dataset_type: str
+    distance: float
+
 
 VALID_WINDOWS = ["5yr", "10yr", "20yr", "50yr"]
 
 
 class WindowRetreiver:
-    def __init__(self, chromadb_path : str = "./chromadb"):
-        self.client = chromadb.PersistentClient(path = chromadb_path)
+    def __init__(self, chromadb_path: str = "./chromadb"):
+        self.client = chromadb.PersistentClient(path=chromadb_path)
         self.embedder = SentenceTransformer("all-MiniLM-L6-v2")
         logger.info("WindowRetreiver initialized (path=%s)", chromadb_path)
-        
-
-
-
-
 
     def retreive(
-            self,
-            question: str,
-            window: str,
-            n_results: int = 5,
+        self,
+        question: str,
+        window: str,
+        n_results: int = 5,
     ) -> list[RetrievedChunk]:
-        
+
         if window not in VALID_WINDOWS:
             raise ValueError(
                 f"Invalid window '{window}'. Must be one of {VALID_WINDOWS}."
@@ -57,7 +51,7 @@ class WindowRetreiver:
                 "successfully? (%s)", collection_name, exc
             )
             return []
-        
+
         if collection.count() == 0:
             logger.warning("Collection '%s' is empty.", collection_name)
             return []
@@ -80,37 +74,32 @@ class WindowRetreiver:
                 "dataset_type": meta.get("dataset_type", "unknown"),
                 "distance": float(dist),
             })
+
         return chunks
-    
+
     def retrieve_all_windows(
-            self,
-            question: str,
-            n_results: int = 5,
+        self,
+        question: str,
+        n_results: int = 5,
     ) -> dict[str, list[RetrievedChunk]]:
         return {
-            window : self.retreive(question, window, n_results)
+            window: self.retreive(question, window, n_results)
             for window in VALID_WINDOWS
         }
+
     def format_context(self, chunks: list[RetrievedChunk]) -> str:
         if not chunks:
             return "(No relevant context was retrieved for this particular window.)"
         return "\n\n".join(
             f"[{c['date']}]: {c['text']}" for c in chunks
         )
-        
-retriever = WindowRetreiver()
-for w in VALID_WINDOWS:
-    try:
-        result = retriever.retreive("test", w, n_results=1)
-        print(f"{w}: OK, {len(result)} result(s)")
-    except Exception as e:
-        print(f"{w}: FAILED — {e}")
 
 
-
-
- 
-
-
-
-  
+if __name__ == "__main__":
+    retriever = WindowRetreiver()
+    for w in VALID_WINDOWS:
+        try:
+            result = retriever.retreive("test", w, n_results=1)
+            print(f"{w}: OK, {len(result)} result(s)")
+        except Exception as e:
+            print(f"{w}: FAILED — {e}")
