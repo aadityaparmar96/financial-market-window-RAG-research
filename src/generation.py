@@ -24,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger("generation")
 
 MODEL_NAME = "claude-sonnet-5"   # confirm exact current model string before real runs
-MAX_TOKENS = 600
+MAX_TOKENS = 1200
 
 REFINED_SYSTEM_PROMPT = """You are a financial research assistant analyzing historical economic data to reason about market conditions.
 
@@ -87,14 +87,14 @@ class AnswerGenerator:
         self,
         question: str,
         window: str,
-        n_results: int = 8,
+        n_results: int = 10,
     ) -> dict:
         if window not in VALID_WINDOWS:
             raise ValueError(
                 f"Invalid Window '{window}'. Must be one of {VALID_WINDOWS}"
             )
 
-        chunks = self.retriever.retrieve_diverse(question, window, per_source=2)
+        chunks = self.retriever.retrieve_date_matched(question, window, per_source=2)
         context = self.retriever.format_context(chunks)
 
         user_message = (
@@ -139,7 +139,7 @@ class AnswerGenerator:
             "context_used": None,
         }
 
-    def generate_all_conditions(self, question: str, n_results: int = 8) -> dict:
+    def generate_all_conditions(self, question: str, n_results: int = 10) -> dict:
         results = {"baseline": self.generate_baseline(question)}
         for window in VALID_WINDOWS:
             results[window] = self.generate_rag(question, window, n_results)

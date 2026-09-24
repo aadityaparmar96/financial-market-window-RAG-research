@@ -115,9 +115,6 @@ class WindowRetreiver:
             logger.warning("Collection '%s' is empty.", collection_name)
             return []
 
-        # Discover which source files actually exist in this window by
-        # sampling metadata — cheap, since we only need distinct 'source'
-        # values, not every document in the collection.
         sample = collection.get(
             limit=min(collection.count(), 2000),
             include=["metadatas"],
@@ -148,9 +145,6 @@ class WindowRetreiver:
                     "distance": float(dist),
                 })
 
-        # Re-sort by relevance across the combined pool, so the most
-        # relevant chunks still lead the context block even though every
-        # source was guaranteed representation.
         all_chunks.sort(key=lambda c: c["distance"])
 
         logger.info(
@@ -159,6 +153,97 @@ class WindowRetreiver:
         )
 
         return all_chunks
+
+    def retrieve_date_matched(
+        self,
+        question: str,
+        window: str,
+        per_source: int = 2,
+        anchor_source: str = "S&P500",
+    ) -> list[RetrievedChunk]:
+        """
+        Like retrieve_diverse(), but additionally ensures that for every
+        non-anchor chunk retrieved (e.g. a FEDFUNDS reading for a given
+        month), the corresponding anchor_source chunk (default: S&P500)
+        for that SAME DATE is also included, if it exists in this window.
+
+        This directly addresses a failure mode observed during testing:
+        retrieve_diverse() could correctly surface a relevant macro
+        indicator (e.g. FEDFUNDS showing a rate decline from 6.4% in
+        2000-12 to 1.24% in 2002-12) without also surfacing the S&P 500
+        price data for those same dates — leaving the model unable to
+        connect a policy move to its actual market outcome, since the
+        two pieces of context described different, unrelated months.
+
+        Chunks added purely because they share a date with a retrieved
+        chunk (rather than because they matched the query by similarity)
+        are given distance=0.0 to mark them as exact date-alignment
+        additions, not similarity-ranked results — useful for debugging
+        or for later filtering if this behavior needs to be distinguished
+        downstream.
+        """
+        base_chunks = self.retrieve_diverse(question, window, per_source)
+
+        if not base_chunks:
+            return base_chunks
+
+        try:
+            collection = self.client.get_collection(f"finance_{window}")
+        except Exception as exc:
+            logger.error(
+                "Collection 'finance_%s' not found during date-matching. (%s)",
+                window, exc
+            )
+            return base_chunks
+
+        dates_needing_anchor = set(
+            c["date"] for c in base_chunks if c["source"] != anchor_source
+        )
+        existing_anchor_dates = set(
+            c["date"] for c in base_chunks if c["source"] == anchor_source
+        )
+
+        supplement_dates = dates_needing_anchor - existing_anchor_dates
+        added_count = 0
+
+        for date_str in supplement_dates:
+            if date_str == "unknown":
+                continue
+            try:
+                results = collection.get(
+                    where={
+                        "$and": [
+                            {"source": anchor_source},
+                            {"date": date_str},
+                        ]
+                    },
+                    limit=1,
+                    include=["documents", "metadatas"],
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Date-match lookup failed for date=%s source=%s: %s",
+                    date_str, anchor_source, exc
+                )
+                continue
+
+            if results["documents"]:
+                base_chunks.append({
+                    "text": results["documents"][0],
+                    "date": date_str,
+                    "source": anchor_source,
+                    "dataset_type": results["metadatas"][0].get("dataset_type", "generic"),
+                    "distance": 0.0,
+                })
+                added_count += 1
+
+        logger.info(
+            "retrieve_date_matched | window=%s | base_chunks=%d | "
+            "date_matched_additions=%d | total=%d",
+            window, len(base_chunks) - added_count, added_count, len(base_chunks)
+        )
+
+        return base_chunks
 
     def retrieve_all_windows(
         self,
@@ -181,10 +266,12 @@ class WindowRetreiver:
 if __name__ == "__main__":
     retriever = WindowRetreiver()
 
+    test_query = "Federal Reserve interest rate cuts following economic shock"
+
     print("=== Standard retrieval (top-k across mixed collection) ===")
     for w in VALID_WINDOWS:
         try:
-            result = retriever.retreive("test", w, n_results=1)
+            result = retriever.retreive(test_query, w, n_results=1)
             print(f"{w}: OK, {len(result)} result(s)")
         except Exception as e:
             print(f"{w}: FAILED — {e}")
@@ -192,8 +279,20 @@ if __name__ == "__main__":
     print("\n=== Diverse retrieval (per-source, guaranteed representation) ===")
     for w in VALID_WINDOWS:
         try:
-            result = retriever.retrieve_diverse("test", w, per_source=1)
+            result = retriever.retrieve_diverse(test_query, w, per_source=1)
             sources_returned = sorted(set(c["source"] for c in result))
             print(f"{w}: OK, {len(result)} result(s) from sources: {sources_returned}")
+        except Exception as e:
+            print(f"{w}: FAILED — {e}")
+
+    print("\n=== Date-matched retrieval (diverse + S&P500 date alignment) ===")
+    for w in VALID_WINDOWS:
+        try:
+            result = retriever.retrieve_date_matched(test_query, w, per_source=1)
+            sp500_dates = sorted(set(c["date"] for c in result if c["source"] == "S&P500"))
+            other_dates = sorted(set(c["date"] for c in result if c["source"] != "S&P500"))
+            print(f"{w}: OK, {len(result)} total chunk(s)")
+            print(f"    S&P500 dates present: {sp500_dates}")
+            print(f"    Other-source dates:   {other_dates}")
         except Exception as e:
             print(f"{w}: FAILED — {e}")
