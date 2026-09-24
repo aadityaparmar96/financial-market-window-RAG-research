@@ -77,6 +77,89 @@ class WindowRetreiver:
 
         return chunks
 
+    def retrieve_diverse(
+        self,
+        question: str,
+        window: str,
+        per_source: int = 2,
+    ) -> list[RetrievedChunk]:
+        """
+        Retrieve top chunks PER SOURCE FILE, rather than top-k across the
+        whole mixed collection. This prevents a single large source (e.g.
+        the Shiller S&P500 dataset, which has far more rows than FEDFUNDS
+        or UNRATE) from crowding out smaller, but potentially more directly
+        relevant, sources for a given question.
+
+        Retrieves per_source chunks independently from each dataset source
+        present in the collection, then combines and re-sorts them by
+        relevance so the strongest matches still lead the context block —
+        every source just gets a guaranteed chance to be considered first.
+        """
+        if window not in VALID_WINDOWS:
+            raise ValueError(
+                f"Invalid window '{window}'. Must be one of {VALID_WINDOWS}."
+            )
+
+        collection_name = f"finance_{window}"
+
+        try:
+            collection = self.client.get_collection(collection_name)
+        except Exception as exc:
+            logger.error(
+                "Collection '%s' not found. Did embeddings.py run "
+                "successfully? (%s)", collection_name, exc
+            )
+            return []
+
+        if collection.count() == 0:
+            logger.warning("Collection '%s' is empty.", collection_name)
+            return []
+
+        # Discover which source files actually exist in this window by
+        # sampling metadata — cheap, since we only need distinct 'source'
+        # values, not every document in the collection.
+        sample = collection.get(
+            limit=min(collection.count(), 2000),
+            include=["metadatas"],
+        )
+        sources_present = sorted(set(
+            m.get("source", "unknown") for m in sample["metadatas"]
+        ))
+
+        all_chunks: list[RetrievedChunk] = []
+        for source in sources_present:
+            results = collection.query(
+                query_texts=[question],
+                n_results=per_source,
+                where={"source": source},
+            )
+            if not results["documents"][0]:
+                continue
+            for doc, meta, dist in zip(
+                results["documents"][0],
+                results["metadatas"][0],
+                results["distances"][0],
+            ):
+                all_chunks.append({
+                    "text": doc,
+                    "date": meta.get("date", "unknown"),
+                    "source": meta.get("source", "unknown"),
+                    "dataset_type": meta.get("dataset_type", "unknown"),
+                    "distance": float(dist),
+                })
+
+        # Re-sort by relevance across the combined pool, so the most
+        # relevant chunks still lead the context block even though every
+        # source was guaranteed representation.
+        all_chunks.sort(key=lambda c: c["distance"])
+
+        logger.info(
+            "retrieve_diverse | window=%s | sources=%d | total_chunks=%d",
+            window, len(sources_present), len(all_chunks)
+        )
+
+        return all_chunks
+
     def retrieve_all_windows(
         self,
         question: str,
@@ -97,9 +180,20 @@ class WindowRetreiver:
 
 if __name__ == "__main__":
     retriever = WindowRetreiver()
+
+    print("=== Standard retrieval (top-k across mixed collection) ===")
     for w in VALID_WINDOWS:
         try:
             result = retriever.retreive("test", w, n_results=1)
             print(f"{w}: OK, {len(result)} result(s)")
+        except Exception as e:
+            print(f"{w}: FAILED — {e}")
+
+    print("\n=== Diverse retrieval (per-source, guaranteed representation) ===")
+    for w in VALID_WINDOWS:
+        try:
+            result = retriever.retrieve_diverse("test", w, per_source=1)
+            sources_returned = sorted(set(c["source"] for c in result))
+            print(f"{w}: OK, {len(result)} result(s) from sources: {sources_returned}")
         except Exception as e:
             print(f"{w}: FAILED — {e}")

@@ -52,6 +52,20 @@ PRECEDENT: any specific historical event or data you are basing your reasoning o
 
 Do not add commentary outside these three sections."""
 
+def extract_text(response) -> str:
+    """
+    Extract the actual text answer from a Claude response, robust to
+    extended-thinking models that may return a ThinkingBlock before the
+    TextBlock in response.content. Searches for the first block that
+    actually has a .text attribute, rather than assuming position 0.
+    """
+    for block in response.content:
+        if hasattr(block, "text"):
+            return block.text
+    raise ValueError(
+        f"No text block found in response.content. "
+        f"Block types received: {[type(b).__name__ for b in response.content]}"
+    )
 
 class AnswerGenerator:
     """
@@ -73,14 +87,14 @@ class AnswerGenerator:
         self,
         question: str,
         window: str,
-        n_results: int = 5,
+        n_results: int = 8,
     ) -> dict:
         if window not in VALID_WINDOWS:
             raise ValueError(
                 f"Invalid Window '{window}'. Must be one of {VALID_WINDOWS}"
             )
 
-        chunks = self.retriever.retreive(question, window, n_results)
+        chunks = self.retriever.retrieve_diverse(question, window, per_source=2)
         context = self.retriever.format_context(chunks)
 
         user_message = (
@@ -104,7 +118,7 @@ class AnswerGenerator:
         )
 
         return {
-            "answer": response.content[0].text,
+            "answer": extract_text(response),
             "window": window,
             "retrieved_chunks": chunks,
             "context_used": context,
@@ -119,13 +133,13 @@ class AnswerGenerator:
         )
 
         return {
-            "answer": response.content[0].text,
+            "answer": extract_text(response),
             "window": "baseline",
             "retrieved_chunks": [],
             "context_used": None,
         }
 
-    def generate_all_conditions(self, question: str, n_results: int = 5) -> dict:
+    def generate_all_conditions(self, question: str, n_results: int = 8) -> dict:
         results = {"baseline": self.generate_baseline(question)}
         for window in VALID_WINDOWS:
             results[window] = self.generate_rag(question, window, n_results)
