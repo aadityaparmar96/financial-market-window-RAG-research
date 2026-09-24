@@ -36,7 +36,7 @@ from typing import TypedDict, Literal, Optional
 
 from dotenv import load_dotenv
 load_dotenv()
-
+from generation import AnswerGenerator, extract_text
 import numpy as np
 from scipy import stats
 import anthropic
@@ -187,7 +187,7 @@ class AnswerJudge:
             messages=[{"role": "user", "content": judge_message}],
         )
 
-        judge_text = response.content[0].text
+        judge_text = extract_text(response)
         parsed = self._parse_judge_response(judge_text)
         numeric_error = compute_numeric_error(parsed)
 
