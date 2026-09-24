@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("generation")
 
-MODEL_NAME = "claude-sonnet-4-5"   # confirm exact current model string before real runs
+MODEL_NAME = "claude-sonnet-5"   # confirm exact current model string before real runs
 MAX_TOKENS = 600
 
 REFINED_SYSTEM_PROMPT = """You are a financial research assistant analyzing historical economic data to reason about market conditions.

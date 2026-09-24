@@ -44,6 +44,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("evaluation")
+from generation import MODEL_NAME as JUDGE_MODEL
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +57,6 @@ RAG_CONDITIONS = ["5yr", "10yr", "20yr", "50yr"]
 VALID_SCORES = [0.0, 0.5, 1.0]
 QUESTION_TYPES = ["FACT", "TREND"]
 
-JUDGE_MODEL = "claude-sonnet-5"   # confirm exact model string before locking
 JUDGE_MAX_TOKENS = 400
 
 
