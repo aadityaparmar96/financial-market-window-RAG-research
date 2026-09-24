@@ -34,6 +34,9 @@ import logging
 from pathlib import Path
 from typing import TypedDict, Literal, Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import numpy as np
 from scipy import stats
 import anthropic

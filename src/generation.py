@@ -8,6 +8,8 @@ Depends on:
     - An Anthropic API key set as an environment variable (ANTHROPIC_API_KEY)
 """
 
+from dotenv import load_dotenv
+load_dotenv()
 import os
 import logging
 import anthropic
