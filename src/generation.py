@@ -25,7 +25,7 @@ logger = logging.getLogger("generation")
 
 MODEL_NAME = "claude-sonnet-5"   # confirm exact current model string before real runs
 MAX_TOKENS = 0
-
+#apikey discarded as of now
 REFINED_SYSTEM_PROMPT = """You are a financial research assistant analyzing historical economic data to reason about market conditions.
 
 CRITICAL RULES:
