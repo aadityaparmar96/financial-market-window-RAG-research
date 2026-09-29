@@ -165,3 +165,5 @@ if __name__ == "__main__":
         print(f"Chunks retrieved: {len(result['retrieved_chunks'])}")
         print(f"Answer:\n{result['answer'][:500]}")
         print("-" * 70)
+
+# NEW APPROACH FOR EMBEDDING IS BEING TESTED
